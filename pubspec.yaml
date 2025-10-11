@@ -1,0 +1,47 @@
+name: grounded
+description: "A new Flutter project."
+
+publish_to: 'none' 
+
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  flutter_svg:
+  google_fonts:
+  shared_preferences:
+  provider:
+  clipboard: 
+  awesome_notifications:
+  permission_handler:
+  firebase_messaging:
+  flutter_contacts:
+  
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+
+
+flutter:
+
+
+  uses-material-design: true
+
+  assets:
+    - assets/logos/google-icon.png
+
+
+
+
+
+
