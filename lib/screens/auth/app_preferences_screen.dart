@@ -1,14 +1,20 @@
 // app_preferences_screen.dart
 import 'package:flutter/material.dart';
 import 'package:grounded/Models/dashboard_Data.dart';
+import 'package:grounded/Models/onboarding_data.dart';
+import 'package:grounded/theme/app_theme.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_button.dart';
 
 class AppPreferencesScreen extends StatefulWidget {
   final VoidCallback onComplete;
 
-  const AppPreferencesScreen({Key? key, required this.onComplete})
-    : super(key: key);
+  const AppPreferencesScreen({
+    Key? key,
+    required this.onComplete,
+    required OnboardingData onboardingData,
+  }) : super(key: key);
 
   @override
   State<AppPreferencesScreen> createState() => _AppPreferencesScreenState();
@@ -22,12 +28,10 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
   bool _analyticsEnabled = true;
   bool _motivationalMessages = true;
   String _dataSharing = 'Anonymous';
-
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-
-  final List<String> _themeOptions = ['System', 'Light', 'Dark'];
+  final List<String> _themeOptions = ['System', 'Light', 'Dark', 'AMOLED'];
   final List<String> _dataSharingOptions = [
     'Anonymous',
     'Private',
@@ -58,6 +62,14 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
         );
 
     _animationController.forward();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _selectedTheme = prefs.getString('app_theme') ?? 'System';
+    });
   }
 
   @override
@@ -66,10 +78,58 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
     super.dispose();
   }
 
+  Future<void> _saveToDatabase() async {
+    try {
+      // Get the complete data as JSON
+      // final jsonData = widget.onboardingData.toJson();
+
+      // TODO: Send to your database
+      // Example with Firebase:
+      // await FirebaseFirestore.instance
+      //     .collection('users')
+      //     .doc(userId)
+      //     .set(jsonData);
+
+      // Or with your API:
+      // await http.post(
+      //   Uri.parse('your-api-endpoint'),
+      //   body: jsonEncode(jsonData),
+      //   headers: {'Content-Type': 'application/json'},
+      // );
+
+      print('All onboarding data: ');
+
+      // Mark onboarding as complete
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_complete', true);
+
+      if (mounted) {
+        widget.onComplete();
+      }
+    } catch (e) {
+      print('Error saving to database: $e');
+      // Handle error
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save data: $e')));
+      }
+    }
+  }
+
   Future<void> _handleComplete() async {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString('app_theme', _selectedTheme);
+
+    // Update theme using Provider
+    if (mounted) {
+      await Provider.of<ThemeProvider>(
+        context,
+        listen: false,
+      ).setTheme(_selectedTheme);
+    }
+
     await prefs.setBool('daily_reminders', _dailyReminders);
     await prefs.setString('reminder_time', _reminderTime);
     await prefs.setBool('analytics_enabled', _analyticsEnabled);
@@ -78,13 +138,11 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
     await prefs.setBool('onboarding_complete', true);
 
     if (mounted) {
-      widget.onComplete();
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => DashboardScreen()),
+      );
     }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => DashboardScreen()),
-    );
   }
 
   void _showTimePicker() async {
@@ -258,8 +316,14 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
                               return _PreferenceChip(
                                 text: theme,
                                 isSelected: isSelected,
-                                onTap: () =>
-                                    setState(() => _selectedTheme = theme),
+                                onTap: () async {
+                                  setState(() => _selectedTheme = theme);
+                                  // Update theme immediately
+                                  await Provider.of<ThemeProvider>(
+                                    context,
+                                    listen: false,
+                                  ).setTheme(theme);
+                                },
                               );
                             }).toList(),
                           ),

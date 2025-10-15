@@ -1,5 +1,6 @@
 // usage_patterns_screen.dart
 import 'package:flutter/material.dart';
+import 'package:grounded/Models/onboarding_data.dart';
 import 'package:grounded/screens/auth/safety_setup_screen.dart';
 import 'package:grounded/theme/app_colors.dart';
 import 'package:grounded/theme/app_text_styles.dart';
@@ -9,11 +10,13 @@ import '../../widgets/custom_button.dart';
 class UsagePatternsScreen extends StatefulWidget {
   final List<String> selectedSubstances;
   final VoidCallback onContinue;
+  final OnboardingData onboardingData;
 
   const UsagePatternsScreen({
     Key? key,
     required this.selectedSubstances,
     required this.onContinue,
+    required this.onboardingData,
   }) : super(key: key);
 
   @override
@@ -336,6 +339,22 @@ class _UsagePatternsScreenState extends State<UsagePatternsScreen>
     'Varies',
   ];
 
+  String _selectedCurrency = '\$'; // Defaults to USD
+
+  final Map<String, String> _currencySymbols = {
+    '\$': 'USD',
+    '€': 'EUR',
+    '£': 'GBP',
+    '¥': 'JPY',
+    '₹': 'INR',
+    '₦': 'NGN',
+    '₩': 'KRW',
+    '₪': 'ILS',
+    '₱': 'PHP',
+    '₿': 'BTC',
+    // Add more currencies as needed
+  };
+
   @override
   void initState() {
     super.initState();
@@ -531,10 +550,13 @@ class _UsagePatternsScreenState extends State<UsagePatternsScreen>
     }
 
     if (mounted) {
-      Navigator.of(context).push(
+      Navigator.push(
+        context,
         MaterialPageRoute(
-          builder: (context) =>
-              SafetySetupScreen(onContinue: widget.onContinue),
+          builder: (context) => SafetySetupScreen(
+            onboardingData: widget.onboardingData,
+            onContinue: widget.onContinue,
+          ),
         ),
       );
     }
@@ -965,16 +987,25 @@ class _UsagePatternsScreenState extends State<UsagePatternsScreen>
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green[50],
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.attach_money,
-                    color: Color(0xFF4CAF50),
-                    size: 24,
+                // Tappable currency icon
+                GestureDetector(
+                  onTap: _showCurrencyPicker,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        _selectedCurrency, // <-- show actual currency symbol here
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF4CAF50),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -986,11 +1017,11 @@ class _UsagePatternsScreenState extends State<UsagePatternsScreen>
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '0.00',
                       border: InputBorder.none,
-                      prefixText: '\$ ',
-                      prefixStyle: TextStyle(
+                      prefixText: '$_selectedCurrency ',
+                      prefixStyle: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
@@ -1005,6 +1036,7 @@ class _UsagePatternsScreenState extends State<UsagePatternsScreen>
               ],
             ),
           ),
+
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(16),
@@ -1028,6 +1060,101 @@ class _UsagePatternsScreenState extends State<UsagePatternsScreen>
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  // Add this method to show currency picker
+  void _showCurrencyPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Select Currency',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ),
+              Divider(color: Colors.grey[300], height: 1),
+              SizedBox(
+                height: 300,
+                child: ListView(
+                  children: _currencySymbols.entries.map((entry) {
+                    return ListTile(
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: _selectedCurrency == entry.key
+                              ? Colors.green[50]
+                              : Colors.grey[100],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            entry.key,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: _selectedCurrency == entry.key
+                                  ? const Color(0xFF4CAF50)
+                                  : Colors.grey[700],
+                            ),
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        entry.value,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Currency: ${entry.key}',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      trailing: _selectedCurrency == entry.key
+                          ? Icon(Icons.check_circle, color: Colors.green[500])
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          _selectedCurrency = entry.key;
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

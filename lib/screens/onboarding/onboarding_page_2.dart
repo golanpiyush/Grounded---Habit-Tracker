@@ -1,6 +1,7 @@
 // onboarding_page_2.dart
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:grounded/theme/app_text_styles.dart';
 
 class OnboardingPage2 extends StatefulWidget {
   const OnboardingPage2({Key? key}) : super(key: key);
@@ -13,6 +14,7 @@ class _OnboardingPage2State extends State<OnboardingPage2>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  late Animation<double> _fadeSlideAnimation;
 
   @override
   void initState() {
@@ -22,6 +24,12 @@ class _OnboardingPage2State extends State<OnboardingPage2>
       vsync: this,
     );
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    _fadeSlideAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+      ),
+    );
     _controller.forward();
   }
 
@@ -33,146 +41,219 @@ class _OnboardingPage2State extends State<OnboardingPage2>
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Headline with gradient
-          ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [const Color(0xFF2D5016), const Color(0xFF4A7C2A)],
-            ).createShader(bounds),
-            child: Text(
-              'Understand Your Patterns',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: -0.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Gain insights into your usage habits',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w400,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 40),
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 40),
 
-          // Animated Pie Chart
-          AnimatedBuilder(
-            animation: _animation,
-            builder: (context, child) {
-              return Container(
-                width: 280,
-                height: 280,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
+              // Headline with gradient
+              AnimatedBuilder(
+                animation: _fadeSlideAnimation,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(0, 20 * (1 - _fadeSlideAnimation.value)),
+                    child: Opacity(
+                      opacity: _fadeSlideAnimation.value,
+                      child: child,
                     ),
-                  ],
+                  );
+                },
+                child: ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [const Color(0xFF2D5016), const Color(0xFF4A7C2A)],
+                  ).createShader(bounds),
+                  child: Text(
+                    'Understand Your Patterns',
+                    style: AppTextStyles.headlineLarge(context).copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-                child: CustomPaint(
-                  painter: UsagePieChartPainter(_animation.value),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '24h',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                        Text(
-                          'Daily Pattern',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
+              ),
+
+              const SizedBox(height: 12),
+
+              AnimatedBuilder(
+                animation: _fadeSlideAnimation,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(0, 20 * (1 - _fadeSlideAnimation.value)),
+                    child: Opacity(
+                      opacity: _fadeSlideAnimation.value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Text(
+                  'Gain insights into your usage habits',
+                  style: AppTextStyles.bodyMedium(
+                    context,
+                  ).copyWith(color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 40),
+
+              // Animated Pie Chart - Made responsive
+              AnimatedBuilder(
+                animation: _animation,
+                builder: (context, child) {
+                  return Container(
+                    width: math.min(
+                      280,
+                      MediaQuery.of(context).size.width - 80,
+                    ),
+                    height: math.min(
+                      280,
+                      MediaQuery.of(context).size.width - 80,
+                    ),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
+                    child: CustomPaint(
+                      painter: UsagePieChartPainter(_animation.value),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '24h',
+                              style: AppTextStyles.headlineSmall(context)
+                                  .copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey[800],
+                                  ),
+                            ),
+                            Text(
+                              'Daily Pattern',
+                              style: AppTextStyles.caption(
+                                context,
+                              ).copyWith(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              // Legend - Made scrollable for small screens
+              AnimatedBuilder(
+                animation: _fadeSlideAnimation,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(0, 15 * (1 - _fadeSlideAnimation.value)),
+                    child: Opacity(
+                      opacity: _fadeSlideAnimation.value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildLegendItem('Morning', const Color(0xFF2D5016)),
+                      const SizedBox(width: 16),
+                      _buildLegendItem('Afternoon', const Color(0xFF4A7C2A)),
+                      const SizedBox(width: 16),
+                      _buildLegendItem('Evening', const Color(0xFF6FA83A)),
+                      const SizedBox(width: 16),
+                      _buildLegendItem('Night', const Color(0xFFA8D890)),
+                    ],
                   ),
                 ),
-              );
-            },
-          ),
+              ),
 
-          const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
-          // Legend
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildLegendItem('Morning', const Color(0xFF2D5016)),
-              const SizedBox(width: 16),
-              _buildLegendItem('Afternoon', const Color(0xFF4A7C2A)),
-              const SizedBox(width: 16),
-              _buildLegendItem('Evening', const Color(0xFF6FA83A)),
-              const SizedBox(width: 16),
-              _buildLegendItem('Night', const Color(0xFFA8D890)),
+              // Feature List with improved styling
+              AnimatedBuilder(
+                animation: _fadeSlideAnimation,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(0, 15 * (1 - _fadeSlideAnimation.value)),
+                    child: Opacity(
+                      opacity: _fadeSlideAnimation.value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Column(
+                  children: [
+                    _buildFeatureItem(
+                      'Track usage without judgment',
+                      Icons.visibility_outlined,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildFeatureItem(
+                      'Discover when and why you use',
+                      Icons.psychology_outlined,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildFeatureItem(
+                      'Set goals that work for you',
+                      Icons.flag_outlined,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 40),
             ],
           ),
-
-          const SizedBox(height: 32),
-
-          // Feature List with improved styling
-          _buildFeatureItem(
-            'Track usage without judgment',
-            Icons.visibility_outlined,
-          ),
-          _buildFeatureItem(
-            'Discover when and why you use',
-            Icons.psychology_outlined,
-          ),
-          _buildFeatureItem('Set goals that work for you', Icons.flag_outlined),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[700],
-            fontWeight: FontWeight.w500,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-        ),
-      ],
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTextStyles.caption(
+              context,
+            ).copyWith(color: Colors.grey[700], fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildFeatureItem(String text, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
+    return Container(
+      width: double.infinity,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 44,
@@ -198,8 +279,7 @@ class _OnboardingPage2State extends State<OnboardingPage2>
           Expanded(
             child: Text(
               text,
-              style: TextStyle(
-                fontSize: 16,
+              style: AppTextStyles.bodyMedium(context).copyWith(
                 color: Colors.grey[700],
                 fontWeight: FontWeight.w500,
                 height: 1.4,
@@ -283,8 +363,6 @@ class UsagePieChartPainter extends CustomPainter {
 
         canvas.drawLine(center, lineEnd, linePaint);
       }
-
-      // No labels on the chart itself
 
       startAngle += sweepAngle;
     }

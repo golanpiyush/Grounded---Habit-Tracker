@@ -1,6 +1,7 @@
 // goal_setup_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:grounded/Models/onboarding_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_button.dart';
 import 'substance_selection_screen.dart';
@@ -595,6 +596,24 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
   void _handleContinue() async {
     if (!mounted || _selectedGoals.isEmpty) return;
 
+    // Create OnboardingData object with goal setup data
+    final onboardingData = OnboardingData(
+      selectedGoals: _selectedGoals,
+      selectedTimeline: _selectedTimeline,
+      motivationLevel: _motivationLevel,
+      primaryReason: _primaryReason,
+    );
+
+    // PRINT DATA HERE
+    print('=== NAVIGATING TO SUBSTANCE SELECTION ===');
+    print('Selected Goals: ${_selectedGoals.toList()}');
+    print('Selected Timeline: $_selectedTimeline');
+    print('Motivation Level: $_motivationLevel');
+    print('Primary Reason: $_primaryReason');
+    print('OnboardingData: $onboardingData');
+    print('========================================');
+
+    // Still save to SharedPreferences for backup
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('user_goals', _selectedGoals.toList());
     await prefs.setString('user_timeline', _selectedTimeline ?? '');
@@ -605,6 +624,7 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => SubstanceSelectionScreen(
+            onboardingData: onboardingData, // Pass data
             onContinue: widget.onComplete,
             onSkip: widget.onComplete,
           ),
@@ -613,8 +633,12 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
     }
   }
 
+  // REPLACE _handleSkip method:
   void _handleSkip() async {
     if (!mounted) return;
+
+    // Create empty OnboardingData
+    final onboardingData = OnboardingData();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('user_goals', []);
@@ -626,6 +650,7 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => SubstanceSelectionScreen(
+            onboardingData: onboardingData,
             onContinue: widget.onComplete,
             onSkip: widget.onComplete,
           ),

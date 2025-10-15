@@ -1,6 +1,7 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:grounded/Models/dashboard_Data.dart';
+import 'package:grounded/screens/welcome_intro_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/onboarding_provider.dart';
@@ -9,7 +10,6 @@ import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/auth/auth_choice_screen.dart';
 import 'screens/auth/sign_up_screen.dart';
 import 'screens/auth/log_in_screen.dart';
-import 'screens/auth/goal_setup_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -48,7 +48,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'Grounded - Habit Tracker',
-        theme: AppTheme.lightTheme,
+        // theme: ThemeProvider.lightTheme,
         home: const AppNavigator(),
         debugShowCheckedModeBanner: false,
       ),
@@ -170,10 +170,10 @@ class _AppNavigatorState extends State<AppNavigator> {
 
   void _onAuthSuccess() {
     if (mounted) {
-      // Navigate directly to goal setup screen
+      // Navigate to welcome intro screen first, then goal setup
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (context) => GoalSetupScreen(onComplete: _navigateToHome),
+          builder: (context) => WelcomeIntroScreen(onComplete: _navigateToHome),
         ),
         (route) => false,
       );

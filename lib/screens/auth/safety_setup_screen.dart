@@ -1,6 +1,7 @@
 // safety_setup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:grounded/Models/onboarding_data.dart';
 import 'package:grounded/screens/auth/app_preferences_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,9 +9,13 @@ import '../../widgets/custom_button.dart';
 
 class SafetySetupScreen extends StatefulWidget {
   final VoidCallback onContinue;
+  final OnboardingData onboardingData;
 
-  const SafetySetupScreen({Key? key, required this.onContinue})
-    : super(key: key);
+  const SafetySetupScreen({
+    Key? key,
+    required this.onContinue,
+    required this.onboardingData,
+  }) : super(key: key);
 
   @override
   State<SafetySetupScreen> createState() => _SafetySetupScreenState();
@@ -84,11 +89,21 @@ class _SafetySetupScreenState extends State<SafetySetupScreen>
   }
 
   Future<void> _handleContinue() async {
+    // Update onboardingData with safety setup data
+    final finalData = widget.onboardingData.copyWith(
+      emergencyContacts: _emergencyContacts,
+      supportSystem: _supportSystem,
+      withdrawalConcern: _withdrawalConcern,
+      usageContext: _usageContext,
+      crisisResourcesEnabled: _crisisResourcesEnabled,
+      harmReductionInfo: _harmReductionInfo,
+    );
+
+    // Save to SharedPreferences for backup
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('safety_setup_complete', true);
     await prefs.setString('support_system', _supportSystem ?? '');
 
-    // Save emergency contacts as JSON string
     final contactsJson = _emergencyContacts
         .map((c) => '${c['name']}|${c['number']}')
         .join(',');
@@ -100,10 +115,13 @@ class _SafetySetupScreenState extends State<SafetySetupScreen>
     await prefs.setBool('harm_reduction_info', _harmReductionInfo);
 
     if (mounted) {
+      // Navigate to AppPreferencesScreen and pass final data
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) =>
-              AppPreferencesScreen(onComplete: widget.onContinue),
+          builder: (context) => AppPreferencesScreen(
+            onboardingData: finalData,
+            onComplete: widget.onContinue,
+          ),
         ),
       );
     }

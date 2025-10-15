@@ -1,6 +1,7 @@
 // sign_up_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:grounded/theme/app_text_styles.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../utils/validators.dart';
@@ -25,7 +26,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-
+  final Map<int, bool> _hasAnimated = {};
   bool _isLoading = false;
   PasswordStrength _passwordStrength = PasswordStrength.weak;
 
@@ -201,21 +202,22 @@ class _SignUpScreenState extends State<SignUpScreen>
                               children: [
                                 Text(
                                   'Create Your Account',
-                                  style: TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.grey[900],
-                                    letterSpacing: -0.5,
-                                  ),
+                                  style: AppTextStyles.headlineLarge(context)
+                                      .copyWith(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.grey[900],
+                                        letterSpacing: -0.5,
+                                      ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   'Join us and start your journey',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w400,
-                                  ),
+                                  style: AppTextStyles.bodyMedium(context)
+                                      .copyWith(
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w400,
+                                      ),
                                 ),
                               ],
                             ),
@@ -242,17 +244,17 @@ class _SignUpScreenState extends State<SignUpScreen>
 
                         // Animated Password Field with Strength Indicator
                         _buildAnimatedField(
-                          delay: 300,
+                          delay: 400,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               CustomTextField(
                                 label: 'Password',
-                                hintText: 'Create a password',
+                                hintText: 'Enter your password',
                                 type: TextFieldType.password,
                                 controller: _passwordController,
                                 validator: Validators.passwordValidator,
-                                textInputAction: TextInputAction.next,
+                                showValidationIcon: true,
                               ),
 
                               const SizedBox(height: 12),
@@ -426,18 +428,30 @@ class _SignUpScreenState extends State<SignUpScreen>
     );
   }
 
-  Widget _buildAnimatedField({required int delay, required Widget child}) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 600 + delay),
+  Widget _buildAnimatedField({required Widget child, required int delay}) {
+    // Mark this animation as completed once it runs
+    if (!_hasAnimated.containsKey(delay)) {
+      Future.delayed(Duration(milliseconds: delay), () {
+        if (mounted) {
+          setState(() {
+            _hasAnimated[delay] = true;
+          });
+        }
+      });
+    }
+
+    final shouldAnimate = _hasAnimated[delay] == true;
+
+    return AnimatedOpacity(
+      opacity: shouldAnimate ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 500),
       curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: child,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.translationValues(0, shouldAnimate ? 0 : 30, 0),
+        child: child,
+      ),
     );
   }
 }

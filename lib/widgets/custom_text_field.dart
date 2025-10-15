@@ -1,5 +1,3 @@
-// custom_text_field.dart
-
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -43,16 +41,21 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
   @override
   Widget build(BuildContext context) {
+    final isPassword = widget.type == TextFieldType.password;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Label Text
         Text(
           widget.label,
-          style: AppTextStyles.bodySmall(
+          style: AppTextStyles.bodyMedium(
             context,
-          ).copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+          ).copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
+
+        // Text Field
         Focus(
           onFocusChange: (hasFocus) {
             setState(() => _hasFocus = hasFocus);
@@ -62,10 +65,13 @@ class _CustomTextFieldState extends State<CustomTextField> {
           },
           child: TextFormField(
             controller: widget.controller,
-            obscureText: widget.type == TextFieldType.password && _obscureText,
+            obscureText: isPassword && _obscureText,
             autofocus: widget.autofocus,
             textInputAction: widget.textInputAction,
             onFieldSubmitted: widget.onSubmitted,
+            style: AppTextStyles.bodyMedium(
+              context,
+            ).copyWith(color: AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: widget.hintText,
               hintStyle: AppTextStyles.bodySmall(
@@ -85,7 +91,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primaryGreen),
+                borderSide: const BorderSide(
+                  color: AppColors.primaryGreen,
+                  width: 1.5,
+                ),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -93,16 +102,17 @@ class _CustomTextFieldState extends State<CustomTextField> {
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.errorRed),
+                borderSide: const BorderSide(
+                  color: AppColors.errorRed,
+                  width: 1.5,
+                ),
               ),
               suffixIcon: _buildSuffixIcon(),
               errorText: _errorText,
             ),
             onChanged: (value) {
               widget.onChanged?.call(value);
-              if (_hasFocus) {
-                setState(() => _errorText = null);
-              }
+              if (_hasFocus) setState(() => _errorText = null);
             },
           ),
         ),
@@ -111,23 +121,26 @@ class _CustomTextFieldState extends State<CustomTextField> {
   }
 
   Widget? _buildSuffixIcon() {
+    final controller = widget.controller;
+
+    // Password visibility toggle
     if (widget.type == TextFieldType.password) {
       return IconButton(
         icon: Icon(
-          _obscureText ? Icons.visibility : Icons.visibility_off,
-          color: AppColors.textSecondary,
+          _obscureText
+              ? Icons.visibility_outlined
+              : Icons.visibility_off_outlined,
+          color: _hasFocus ? AppColors.primaryGreen : AppColors.textSecondary,
         ),
-        onPressed: () {
-          setState(() => _obscureText = !_obscureText);
-        },
+        onPressed: () => setState(() => _obscureText = !_obscureText),
       );
     }
 
-    if (widget.showValidationIcon &&
-        widget.controller?.text.isNotEmpty == true) {
-      final isValid = widget.validator?.call(widget.controller!.text) == null;
+    // Validation icon (✔ / ❌)
+    if (widget.showValidationIcon && controller?.text.isNotEmpty == true) {
+      final isValid = widget.validator?.call(controller!.text) == null;
       return Icon(
-        isValid ? Icons.check_circle : Icons.error,
+        isValid ? Icons.check_circle_rounded : Icons.error_rounded,
         color: isValid ? AppColors.successGreen : AppColors.errorRed,
         size: 20,
       );

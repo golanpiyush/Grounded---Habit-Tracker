@@ -7,7 +7,7 @@ import 'app_colors.dart';
 class AppTextStyles {
   // Headline Styles
   static TextStyle headlineLarge(BuildContext context) {
-    return GoogleFonts.inter(
+    return GoogleFonts.cabin(
       fontSize: 28,
       fontWeight: FontWeight.w600,
       color: AppColors.textPrimary,
@@ -32,7 +32,7 @@ class AppTextStyles {
 
   // Body Styles
   static TextStyle bodyLarge(BuildContext context) {
-    return GoogleFonts.inter(
+    return GoogleFonts.cabin(
       fontSize: 18,
       fontWeight: FontWeight.w400,
       color: AppColors.textPrimary,
@@ -57,7 +57,7 @@ class AppTextStyles {
 
   // Caption Styles
   static TextStyle caption(BuildContext context) {
-    return GoogleFonts.inter(
+    return GoogleFonts.poppins(
       fontSize: 12,
       fontWeight: FontWeight.w400,
       color: AppColors.textSecondary,

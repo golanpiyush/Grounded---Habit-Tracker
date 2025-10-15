@@ -2,6 +2,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:grounded/Models/onboarding_data.dart';
 import 'package:grounded/screens/auth/usage_patterns_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_button.dart';
@@ -9,11 +10,13 @@ import '../../widgets/custom_button.dart';
 class SubstanceSelectionScreen extends StatefulWidget {
   final VoidCallback onContinue;
   final VoidCallback onSkip;
+  final OnboardingData onboardingData;
 
   const SubstanceSelectionScreen({
     Key? key,
     required this.onContinue,
     required this.onSkip,
+    required this.onboardingData,
   }) : super(key: key);
 
   @override
@@ -215,44 +218,75 @@ class _SubstanceSelectionScreenState extends State<SubstanceSelectionScreen>
   Future<void> _handleContinue() async {
     if (_selectedSubstances.isEmpty || !mounted) return;
 
-    // Save selected substances and new data
+    // Update onboardingData with substance selection data
+    final updatedData = widget.onboardingData.copyWith(
+      selectedSubstances: _selectedSubstances,
+      substanceDurations: _substanceDurations,
+      previousAttempts: _previousAttempts,
+    );
+
+    // PRINT DATA BEFORE NAVIGATION
+    print('=== NAVIGATING TO USAGE PATTERNS SCREEN ===');
+    print('Selected Substances: ${_selectedSubstances.toList()}');
+    print('Substance Durations: $_substanceDurations');
+    print('Previous Attempts: $_previousAttempts');
+    print('Updated OnboardingData:');
+    print('- Goals: ${updatedData.selectedGoals}'); // ← From previous screen
+    print(
+      '- Timeline: ${updatedData.selectedTimeline}',
+    ); // ← From previous screen
+    print(
+      '- Motivation: ${updatedData.motivationLevel}',
+    ); // ← From previous screen
+    print('- Reason: ${updatedData.primaryReason}'); // ← From previous screen
+    print(
+      '- Substances: ${updatedData.selectedSubstances}',
+    ); // ← NEW from this screen
+    print(
+      '- Durations: ${updatedData.substanceDurations}',
+    ); // ← NEW from this screen
+    print(
+      '- Previous Attempts: ${updatedData.previousAttempts}',
+    ); // ← NEW from this screen
+    print('==========================================');
+
+    // Save ONLY substance-related data to SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('user_substances', _selectedSubstances.toList());
     await prefs.setString('user_previous_attempts', _previousAttempts ?? '');
-
-    // Save substance durations
-    final durationMap = _substanceDurations.map(
-      (key, value) => MapEntry(key, value),
+    await prefs.setString(
+      'user_substance_durations',
+      jsonEncode(_substanceDurations),
     );
-    await prefs.setString('user_substance_durations', jsonEncode(durationMap));
 
     if (!mounted) return;
 
-    // Call onContinue callback
-    widget.onContinue();
-
-    // Navigate to UsagePatternsScreen
+    // Navigate to UsagePatternsScreen with updated data
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => UsagePatternsScreen(
+          onboardingData: updatedData, // ← This contains ALL data (old + new)
           selectedSubstances: _selectedSubstances.toList(),
-          onContinue: widget.onContinue,
+          onContinue: () {
+            widget.onContinue();
+          },
         ),
       ),
     );
   }
 
+  // REPLACE _handleSkip method:
   Future<void> _handleSkip() async {
     if (!mounted) return;
 
-    // Save empty data
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('user_substances', []);
     await prefs.setString('user_previous_attempts', '');
     await prefs.setString('user_substance_durations', '{}');
 
     if (mounted) {
+      // Call the onSkip callback
       widget.onSkip();
     }
   }
