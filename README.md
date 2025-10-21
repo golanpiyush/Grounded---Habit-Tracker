@@ -364,3 +364,8 @@ Grounded believes that **harm reduction is a valid, evidence-based approach** to
 ---
 
 *Last Updated: October 2025*
+
+## Licensed Icons by:
+<!-- Fluent Emoji by Microsoft
+Licensed under MIT License
+https://github.com/microsoft/fluentui-emoji -->

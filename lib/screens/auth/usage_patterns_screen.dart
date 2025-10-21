@@ -1,6 +1,6 @@
 // usage_patterns_screen.dart
 import 'package:flutter/material.dart';
-import 'package:grounded/Models/onboarding_data.dart';
+import 'package:grounded/models/onboarding_data.dart';
 import 'package:grounded/screens/auth/safety_setup_screen.dart';
 import 'package:grounded/theme/app_colors.dart';
 import 'package:grounded/theme/app_text_styles.dart';
@@ -508,6 +508,58 @@ class _UsagePatternsScreenState extends State<UsagePatternsScreen>
   }
 
   Future<void> _handleContinue() async {
+    // PRINT ALL SUBSTANCE DATA BEFORE SAVING AND NAVIGATION
+    print('=== NAVIGATING TO SAFETY SETUP SCREEN ===');
+    print('Total Substances: ${widget.selectedSubstances.length}');
+    print('==========================================\n');
+
+    for (final entry in _substancePatterns.entries) {
+      final substance = entry.key;
+      final patterns = entry.value;
+
+      print('📊 SUBSTANCE: $substance');
+      print('-------------------------------------------');
+      print('Frequency: ${patterns['frequency'] ?? 'Not set'}');
+      print('Context: ${patterns['context'] ?? 'Not set'}');
+
+      // Consumption Methods
+      final methods = List<String>.from(patterns['consumptionMethod'] ?? []);
+      print(
+        'Consumption Methods: ${methods.isEmpty ? 'None selected' : methods.join(', ')}',
+      );
+
+      // Typical Amounts
+      final amounts = Map<String, String>.from(patterns['typicalAmount'] ?? {});
+      if (amounts.isEmpty) {
+        print('Typical Amounts: None entered');
+      } else {
+        print('Typical Amounts:');
+        amounts.forEach((method, amount) {
+          print('  - $method: $amount');
+        });
+      }
+
+      print(
+        'Cost Per Use: ${patterns['costPerUse']?.isEmpty ?? true ? 'Not entered' : '$_selectedCurrency${patterns['costPerUse']}'}',
+      );
+
+      // Triggers
+      final triggers = List<String>.from(patterns['triggers'] ?? []);
+      print(
+        'Triggers: ${triggers.isEmpty ? 'None selected' : triggers.join(', ')}',
+      );
+
+      // Impacts
+      final impacts = List<String>.from(patterns['impacts'] ?? []);
+      print(
+        'Life Impacts: ${impacts.isEmpty ? 'None selected' : impacts.join(', ')}',
+      );
+
+      print('Time of Day: ${patterns['timeOfDay'] ?? 'Not set'}');
+      print('-------------------------------------------\n');
+    }
+
+    print('💾 SAVING DATA TO SHARED PREFERENCES...');
     final prefs = await SharedPreferences.getInstance();
 
     for (final entry in _substancePatterns.entries) {
@@ -548,6 +600,16 @@ class _UsagePatternsScreenState extends State<UsagePatternsScreen>
         patterns['timeOfDay'] ?? '',
       );
     }
+
+    print('✅ DATA SAVED SUCCESSFULLY');
+    print('\n📋 ONBOARDING DATA SUMMARY:');
+    print('Selected Goals: ${widget.onboardingData.selectedGoals}');
+    print('Timeline: ${widget.onboardingData.selectedTimeline}');
+    print('Motivation Level: ${widget.onboardingData.motivationLevel}');
+    print('Primary Reason: ${widget.onboardingData.primaryReason}');
+    print('Selected Substances: ${widget.onboardingData.selectedSubstances}');
+    print('Previous Attempts: ${widget.onboardingData.previousAttempts}');
+    print('==========================================\n');
 
     if (mounted) {
       Navigator.push(

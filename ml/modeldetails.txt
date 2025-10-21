@@ -1,0 +1,1 @@
+Primary recommendation: Temporal Convolutional Network (TCN) or 1D-CNN + GRU

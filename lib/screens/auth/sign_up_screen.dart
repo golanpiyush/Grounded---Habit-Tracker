@@ -1,6 +1,8 @@
 // sign_up_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:grounded/providers/userDB.dart';
+import 'package:grounded/screens/home_screen.dart';
 import 'package:grounded/theme/app_text_styles.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
@@ -30,6 +32,8 @@ class _SignUpScreenState extends State<SignUpScreen>
   bool _isLoading = false;
   PasswordStrength _passwordStrength = PasswordStrength.weak;
 
+  final UserDatabaseService _userService = UserDatabaseService();
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -40,8 +44,10 @@ class _SignUpScreenState extends State<SignUpScreen>
   void initState() {
     super.initState();
     _passwordController.addListener(_updatePasswordStrength);
+    _initializeAnimations();
+  }
 
-    // Initialize animations
+  void _initializeAnimations() {
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -143,12 +149,40 @@ class _SignUpScreenState extends State<SignUpScreen>
 
     setState(() => _isLoading = true);
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Use UserDatabaseService for signup
+      final authResponse = await _userService.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        fullName: null, // You can add a name field if needed
+      );
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      widget.onSignUpSuccess();
+      if (authResponse.user != null && mounted) {
+        setState(() => _isLoading = false);
+
+        // Success - navigate to next screen
+        widget.onSignUpSuccess();
+
+        // Optional: Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Account created successfully!'),
+            backgroundColor: const Color.fromARGB(255, 38, 90, 40),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_getErrorMessage(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -376,6 +410,17 @@ class _SignUpScreenState extends State<SignUpScreen>
                             isLoading: _isLoading,
                             enabled: _isFormValid && !_isLoading,
                           ),
+                          // child: CustomButton(
+                          //   text: 'Create Account (Tester)',
+                          //   onPressed: () {
+                          //     Navigator.pushReplacement(
+                          //       context,
+                          //       MaterialPageRoute(
+                          //         builder: (context) => DashboardScreen(),
+                          //       ),
+                          //     );
+                          //   },
+                          // ),
                         ),
 
                         const SizedBox(height: 32),
@@ -453,5 +498,19 @@ class _SignUpScreenState extends State<SignUpScreen>
         child: child,
       ),
     );
+  }
+
+  // Helper method to format error messages
+  String _getErrorMessage(dynamic error) {
+    final errorString = error.toString();
+
+    if (errorString.contains('User already registered')) {
+      return 'An account with this email already exists.';
+    } else if (errorString.contains('network') ||
+        errorString.contains('Connection')) {
+      return 'Network error. Please check your connection and try again.';
+    } else {
+      return 'Signup failed. Please try again.';
+    }
   }
 }

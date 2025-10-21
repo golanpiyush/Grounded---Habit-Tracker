@@ -9,9 +9,18 @@
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<string>com.golanPiyush.grounded</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<!-- Add these entries -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>We need access to your photo library to set profile picture</string>
+    
+    <key>NSCameraUsageDescription</key>
+    <string>We need access to your camera to take profile picture</string>
+    
+    <key>NSMicrophoneUsageDescription</key>
+    <string>We need access to your microphone for video capture</string>
 	<key>CFBundleName</key>
 	<string>grounded</string>
 	<key>CFBundlePackageType</key>
@@ -103,4 +112,6 @@
 	</dict>
 
 </dict>
+
+
 </plist>

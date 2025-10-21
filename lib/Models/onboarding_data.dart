@@ -2,8 +2,10 @@ class OnboardingData {
   // From GoalSetupScreen
   Set<String> selectedGoals;
   String? selectedTimeline;
+  DateTime? targetDate; // Add this field
   int motivationLevel;
-  String? primaryReason;
+  String? primaryReason; // for single reason
+  Set<String>? selectedReasons; // for multiple reason
 
   // From SubstanceSelectionScreen
   Set<String> selectedSubstances;
@@ -24,8 +26,10 @@ class OnboardingData {
   OnboardingData({
     this.selectedGoals = const {},
     this.selectedTimeline,
+    this.targetDate, // Add this parameter
     this.motivationLevel = 5,
     this.primaryReason,
+    this.selectedReasons,
     this.selectedSubstances = const {},
     this.substanceDurations = const {},
     this.previousAttempts,
@@ -43,8 +47,10 @@ class OnboardingData {
     return {
       'goals': selectedGoals.toList(),
       'timeline': selectedTimeline,
+      'target_date': targetDate?.toIso8601String(), // Add this line
       'motivation_level': motivationLevel,
       'primary_reason': primaryReason,
+      'selected_reasons': selectedReasons?.toList(),
       'substances': selectedSubstances.toList(),
       'substance_durations': substanceDurations,
       'previous_attempts': previousAttempts,
@@ -63,8 +69,10 @@ class OnboardingData {
   OnboardingData copyWith({
     Set<String>? selectedGoals,
     String? selectedTimeline,
+    DateTime? targetDate, // Add this parameter
     int? motivationLevel,
     String? primaryReason,
+    Set<String>? selectedReasons,
     Set<String>? selectedSubstances,
     Map<String, String>? substanceDurations,
     String? previousAttempts,
@@ -79,8 +87,10 @@ class OnboardingData {
     return OnboardingData(
       selectedGoals: selectedGoals ?? this.selectedGoals,
       selectedTimeline: selectedTimeline ?? this.selectedTimeline,
+      targetDate: targetDate ?? this.targetDate, // Add this line
       motivationLevel: motivationLevel ?? this.motivationLevel,
       primaryReason: primaryReason ?? this.primaryReason,
+      selectedReasons: selectedReasons ?? this.selectedReasons,
       selectedSubstances: selectedSubstances ?? this.selectedSubstances,
       substanceDurations: substanceDurations ?? this.substanceDurations,
       previousAttempts: previousAttempts ?? this.previousAttempts,

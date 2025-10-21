@@ -1,5 +1,7 @@
 // theme_provider.dart
 import 'package:flutter/material.dart';
+import 'package:grounded/providers/theme_provider.dart';
+import 'package:grounded/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {
@@ -59,5 +61,74 @@ class ThemeProvider extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+}
+
+// Add this extension to your AppColors class
+extension AppColorsTheme on AppColors {
+  static Color getBackground(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return const Color(0xFFFAFAF8);
+      case AppThemeMode.dark:
+        return const Color(0xFF1A1A1A);
+      case AppThemeMode.amoled:
+        return const Color(0xFF000000);
+    }
+  }
+
+  static Color getCard(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return const Color(0xFFFFFFFF);
+      case AppThemeMode.dark:
+        return const Color(0xFF2A2A2A);
+      case AppThemeMode.amoled:
+        return const Color(0xFF0D0D0D);
+    }
+  }
+
+  static Color getBorder(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return const Color(0xFFE5E7EB);
+      case AppThemeMode.dark:
+        return const Color(0xFF3A3A3A);
+      case AppThemeMode.amoled:
+        return const Color(0xFF1F1F1F);
+    }
+  }
+
+  static Color getTextPrimary(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return const Color(0xFF1A1A1A);
+      case AppThemeMode.dark:
+        return const Color(0xFFE5E7EB);
+      case AppThemeMode.amoled:
+        return const Color(0xFFFFFFFF);
+    }
+  }
+
+  static Color getTextSecondary(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return const Color(0xFF6B7280);
+      case AppThemeMode.dark:
+        return const Color(0xFF9CA3AF);
+      case AppThemeMode.amoled:
+        return const Color(0xFFB0B0B0);
+    }
+  }
+
+  static Color getTextTertiary(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return const Color(0xFF9CA3AF);
+      case AppThemeMode.dark:
+        return const Color(0xFF6B7280);
+      case AppThemeMode.amoled:
+        return const Color(0xFF808080);
+    }
   }
 }

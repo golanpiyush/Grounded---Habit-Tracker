@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:grounded/screens/auth/goal_setup_screen.dart';
+import 'package:Grounded/screens/auth/goal_setup_screen.dart';
 import 'dart:async';
 import '../../widgets/custom_button.dart';
 

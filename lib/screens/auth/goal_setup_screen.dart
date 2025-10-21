@@ -1,7 +1,10 @@
 // goal_setup_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:grounded/Models/onboarding_data.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:grounded/models/onboarding_data.dart';
+import 'package:grounded/theme/app_colors.dart';
+import 'package:grounded/theme/app_text_styles.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_button.dart';
 import 'substance_selection_screen.dart';
@@ -21,7 +24,8 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
   String? _selectedTimeline;
   int _motivationLevel = 5;
   String? _primaryReason;
-
+  final Set<String> _selectedReasons = {};
+  DateTime? _selectedDate;
   late PageController _pageController;
   int _currentPage = 0;
 
@@ -243,11 +247,11 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
       case 0:
         return _selectedGoals.isNotEmpty;
       case 1:
-        return _selectedTimeline != null;
+        return _selectedTimeline != null || _selectedDate != null;
       case 2:
-        return true; // Motivation level always has a value
+        return true;
       case 3:
-        return _primaryReason != null;
+        return _selectedReasons.isNotEmpty; // CHANGE THIS LINE
       default:
         return false;
     }
@@ -367,6 +371,8 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
           const SizedBox(height: 32),
+
+          // Timeline Options
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -376,6 +382,8 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
                 onTap: () {
                   setState(() {
                     _selectedTimeline = timeline;
+                    _selectedDate =
+                        null; // Clear specific date when timeline is selected
                   });
                 },
                 child: AnimatedContainer(
@@ -386,18 +394,22 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? Colors.blue.withOpacity(0.1)
-                        : Colors.grey[100],
+                        ? AppColors.primaryGreen.withOpacity(0.1)
+                        : Colors.grey[50],
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? Colors.blue : Colors.transparent,
-                      width: 2,
+                      color: isSelected
+                          ? AppColors.primaryGreen
+                          : Colors.transparent,
+                      width: 2.5,
                     ),
                   ),
                   child: Text(
                     timeline,
                     style: TextStyle(
-                      color: isSelected ? Colors.blue : Colors.grey[700],
+                      color: isSelected
+                          ? AppColors.primaryGreen
+                          : Colors.grey[700],
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                     ),
@@ -406,6 +418,191 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
               );
             }).toList(),
           ),
+
+          const SizedBox(height: 24),
+
+          // Divider with text
+          Row(
+            children: [
+              Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'or',
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Date Picker Section
+          // In the date picker section, replace the existing content with:
+          GestureDetector(
+            onTap: () async {
+              final DateTime? picked = await showDatePicker(
+                context: context,
+                initialDate:
+                    _selectedDate ??
+                    DateTime.now().add(const Duration(days: 30)),
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 3650)),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: ColorScheme.light(
+                        primary: AppColors.primaryGreen,
+                        onPrimary: Colors.white,
+                        onSurface: AppColors.textPrimary,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
+              );
+              if (picked != null) {
+                setState(() {
+                  _selectedDate = picked;
+                  _selectedTimeline = _calculateTimelineFromDate(
+                    picked,
+                  ); // Auto-calculate timeline
+                });
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _selectedDate != null
+                    ? AppColors.primaryGreen.withOpacity(0.08)
+                    : Colors.grey[50],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _selectedDate != null
+                      ? AppColors.primaryGreen
+                      : Colors.grey[300]!,
+                  width: _selectedDate != null ? 2.5 : 1.5,
+                ),
+                boxShadow: _selectedDate != null
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primaryGreen.withOpacity(0.1),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: _selectedDate != null
+                              ? AppColors.primaryGreen
+                              : AppColors.primaryGreen.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.calendar_today_rounded,
+                          color: _selectedDate != null
+                              ? Colors.white
+                              : AppColors.primaryGreen,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Set a specific date',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.grey[900],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _selectedDate != null
+                                  ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                                  : 'Choose your target date',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _selectedDate != null
+                                    ? AppColors.primaryGreen
+                                    : Colors.grey[600],
+                                fontWeight: _selectedDate != null
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 18,
+                        color: _selectedDate != null
+                            ? AppColors.primaryGreen
+                            : Colors.grey[400],
+                      ),
+                    ],
+                  ),
+                  if (_selectedDate != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.flag_rounded,
+                            size: 18,
+                            color: AppColors.primaryGreen,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              '${_calculateDaysRemaining(_selectedDate!)} days (${_calculateTimelineFromDate(_selectedDate!)}) to achieve your goal',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.primaryGreen,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
           const SizedBox(height: 80),
         ],
       ),
@@ -419,95 +616,364 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Section
           Text(
             'How ready are you? 💪',
-            style: TextStyle(
+            style: AppTextStyles.headlineLarge(context).copyWith(
               fontSize: 28,
               fontWeight: FontWeight.w700,
-              color: Colors.grey[900],
               letterSpacing: -0.5,
             ),
           ),
           const SizedBox(height: 12),
           Text(
             'Rate your readiness to make a change',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: AppTextStyles.bodyMedium(
+              context,
+            ).copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 48),
+
+          // Animated Circular Progress with Level
           Center(
             child: Column(
               children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _getMotivationColor(
-                      _motivationLevel,
-                    ).withOpacity(0.1),
-                    border: Border.all(
-                      color: _getMotivationColor(_motivationLevel),
-                      width: 4,
+                // Main Circle Display
+                TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOutCubic,
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  builder: (context, scaleValue, child) {
+                    return Transform.scale(
+                      scale: 0.85 + (0.15 * scaleValue),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Outer glow ring
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 400),
+                            width: 160,
+                            height: 160,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  _getMotivationColor(
+                                    _motivationLevel,
+                                  ).withOpacity(0.0),
+                                  _getMotivationColor(
+                                    _motivationLevel,
+                                  ).withOpacity(0.1),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // Main circle
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 400),
+                            curve: Curves.easeOutCubic,
+                            width: 140,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _getMotivationColor(
+                                _motivationLevel,
+                              ).withOpacity(0.12),
+                              border: Border.all(
+                                color: _getMotivationColor(_motivationLevel),
+                                width: 5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _getMotivationColor(
+                                    _motivationLevel,
+                                  ).withOpacity(0.35),
+                                  blurRadius: 24,
+                                  spreadRadius: 0,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Animated number
+                                  TweenAnimationBuilder<double>(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOut,
+                                    tween: Tween(
+                                      begin: _motivationLevel.toDouble() - 0.5,
+                                      end: _motivationLevel.toDouble(),
+                                    ),
+                                    builder: (context, value, child) {
+                                      return Text(
+                                        value.round().toString(),
+                                        style: GoogleFonts.cabin(
+                                          fontSize: 56,
+                                          fontWeight: FontWeight.w800,
+                                          color: _getMotivationColor(
+                                            _motivationLevel,
+                                          ),
+                                          letterSpacing: -2,
+                                          height: 1,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'out of 10',
+                                    style: AppTextStyles.caption(context)
+                                        .copyWith(
+                                          color: _getMotivationColor(
+                                            _motivationLevel,
+                                          ).withOpacity(0.7),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 11,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Animated Status Badge
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween<double>(
+                          begin: 0.8,
+                          end: 1.0,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Container(
+                    key: ValueKey<int>(_motivationLevel),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
                     ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$_motivationLevel',
-                      style: TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.w700,
-                        color: _getMotivationColor(_motivationLevel),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          _getMotivationColor(
+                            _motivationLevel,
+                          ).withOpacity(0.15),
+                          _getMotivationColor(
+                            _motivationLevel,
+                          ).withOpacity(0.08),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: _getMotivationColor(
+                          _motivationLevel,
+                        ).withOpacity(0.4),
+                        width: 2,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _getMotivationText(_motivationLevel),
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: _getMotivationColor(_motivationLevel),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _getMotivationIcon(_motivationLevel),
+                          color: _getMotivationColor(_motivationLevel),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _getMotivationText(_motivationLevel),
+                          style: AppTextStyles.bodyMedium(context).copyWith(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: _getMotivationColor(_motivationLevel),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 48),
-          Slider(
-            value: _motivationLevel.toDouble(),
-            min: 1,
-            max: 10,
-            divisions: 9,
-            onChanged: (value) {
-              setState(() {
-                _motivationLevel = value.round();
-              });
-            },
-            activeColor: _getMotivationColor(_motivationLevel),
-            inactiveColor: Colors.grey[300],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Just exploring',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+
+          const SizedBox(height: 14),
+
+          // Interactive Slider Section
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.cardColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.borderColor, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-              ),
-              Text(
-                'Ready to commit',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+              ],
+            ),
+            child: Column(
+              children: [
+                // Slider
+                SliderTheme(
+                  data: SliderThemeData(
+                    trackHeight: 10,
+                    activeTrackColor: _getMotivationColor(_motivationLevel),
+                    inactiveTrackColor: AppColors.borderColor,
+                    thumbColor: AppColors.cardColor,
+                    overlayColor: _getMotivationColor(
+                      _motivationLevel,
+                    ).withOpacity(0.15),
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 16,
+                      elevation: 6,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 32,
+                    ),
+                    trackShape: const RoundedRectSliderTrackShape(),
+                    valueIndicatorColor: _getMotivationColor(_motivationLevel),
+                  ),
+                  child: Slider(
+                    value: _motivationLevel.toDouble(),
+                    min: 1,
+                    max: 10,
+                    divisions: 9,
+                    onChanged: (value) {
+                      setState(() {
+                        _motivationLevel = value.round();
+                      });
+                    },
+                  ),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 16),
+
+                // Slider Labels
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildSliderLabel(
+                      Icons.explore_outlined,
+                      'Just exploring',
+                      _motivationLevel <= 3,
+                    ),
+                    _buildSliderLabel(
+                      Icons.rocket_launch_rounded,
+                      'Ready to commit',
+                      _motivationLevel >= 8,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
+
+          const SizedBox(height: 24),
+
+          // Dynamic Description Card
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  _getMotivationColor(_motivationLevel).withOpacity(0.08),
+                  _getMotivationColor(_motivationLevel).withOpacity(0.03),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _getMotivationColor(_motivationLevel).withOpacity(0.25),
+                width: 2,
+              ),
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(0, 0.15),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOut,
+                          ),
+                        ),
+                    child: child,
+                  ),
+                );
+              },
+              child: Row(
+                key: ValueKey<int>(_motivationLevel),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _getMotivationColor(
+                        _motivationLevel,
+                      ).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _getMotivationIcon(_motivationLevel),
+                      color: _getMotivationColor(_motivationLevel),
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getMotivationTitle(_motivationLevel),
+                          style: AppTextStyles.headlineSmall(context).copyWith(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: _getMotivationColor(_motivationLevel),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _getMotivationDescription(_motivationLevel),
+                          style: AppTextStyles.bodySmall(context).copyWith(
+                            fontSize: 15,
+                            height: 1.5,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           const SizedBox(height: 80),
         ],
       ),
@@ -532,43 +998,49 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
           ),
           const SizedBox(height: 12),
           Text(
-            'Understanding your motivation helps personalize your journey',
+            'Select all that apply',
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
           const SizedBox(height: 32),
           Wrap(
-            spacing: 12,
-            runSpacing: 12,
+            spacing: 10,
+            runSpacing: 10,
             children: _reasonOptions.map((reason) {
-              final isSelected = _primaryReason == reason;
+              final isSelected = _selectedReasons.contains(reason);
               return GestureDetector(
                 onTap: () {
                   setState(() {
-                    _primaryReason = reason;
+                    if (isSelected) {
+                      _selectedReasons.remove(reason);
+                    } else {
+                      _selectedReasons.add(reason);
+                    }
                   });
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
+                    horizontal: 18,
+                    vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
+                    color: isSelected ? Colors.green[50] : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isSelected ? Colors.green : Colors.transparent,
-                      width: 2,
+                      color: isSelected
+                          ? Colors.green[600]!
+                          : Colors.grey[300]!,
+                      width: 1.5,
                     ),
                   ),
                   child: Text(
                     reason,
                     style: TextStyle(
-                      color: isSelected ? Colors.green : Colors.grey[700],
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
+                      color: isSelected ? Colors.green[700] : Colors.grey[700],
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      fontSize: 15,
                     ),
                   ),
                 ),
@@ -596,35 +1068,63 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
   void _handleContinue() async {
     if (!mounted || _selectedGoals.isEmpty) return;
 
+    // Calculate timeline from date if no timeline selected
+    final String? finalTimeline;
+    if (_selectedTimeline == null && _selectedDate != null) {
+      finalTimeline = _calculateTimelineFromDate(_selectedDate!);
+    } else {
+      finalTimeline = _selectedTimeline;
+    }
+
     // Create OnboardingData object with goal setup data
     final onboardingData = OnboardingData(
       selectedGoals: _selectedGoals,
-      selectedTimeline: _selectedTimeline,
+      selectedTimeline: finalTimeline, // Use calculated timeline
+      targetDate: _selectedDate,
       motivationLevel: _motivationLevel,
-      primaryReason: _primaryReason,
+      primaryReason: _selectedReasons.isNotEmpty
+          ? _selectedReasons.first
+          : null,
+      selectedReasons: _selectedReasons,
     );
 
-    // PRINT DATA HERE
+    // PRINT DATA WITH CALCULATED TIMELINE
     print('=== NAVIGATING TO SUBSTANCE SELECTION ===');
     print('Selected Goals: ${_selectedGoals.toList()}');
-    print('Selected Timeline: $_selectedTimeline');
+    print('Selected Timeline: $finalTimeline'); // This will show "4 months"
+    print('Selected Date: $_selectedDate');
     print('Motivation Level: $_motivationLevel');
-    print('Primary Reason: $_primaryReason');
-    print('OnboardingData: $onboardingData');
+    print('Selected Reasons: ${_selectedReasons.toList()}');
+    print(
+      'Calculated Timeline: ${_selectedDate != null ? _calculateTimelineFromDate(_selectedDate!) : "N/A"}',
+    );
     print('========================================');
 
-    // Still save to SharedPreferences for backup
+    // Save to SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('user_goals', _selectedGoals.toList());
-    await prefs.setString('user_timeline', _selectedTimeline ?? '');
+    await prefs.setString('user_timeline', finalTimeline ?? '');
+    if (_selectedDate != null) {
+      await prefs.setString(
+        'user_target_date',
+        _selectedDate!.toIso8601String(),
+      );
+    }
     await prefs.setInt('user_motivation_level', _motivationLevel);
-    await prefs.setString('user_primary_reason', _primaryReason ?? '');
+    await prefs.setStringList(
+      'user_selected_reasons',
+      _selectedReasons.toList(),
+    );
+    await prefs.setString(
+      'user_primary_reason',
+      onboardingData.primaryReason ?? '',
+    );
 
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => SubstanceSelectionScreen(
-            onboardingData: onboardingData, // Pass data
+            onboardingData: onboardingData,
             onContinue: widget.onComplete,
             onSkip: widget.onComplete,
           ),
@@ -637,14 +1137,37 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
   void _handleSkip() async {
     if (!mounted) return;
 
-    // Create empty OnboardingData
-    final onboardingData = OnboardingData();
+    // Create OnboardingData with default values
+    final onboardingData = OnboardingData(
+      selectedGoals: _selectedGoals, // Keep any selected goals
+      selectedTimeline: _selectedTimeline, // Keep any selected timeline
+      targetDate: _selectedDate, // Keep any selected date
+      motivationLevel: _motivationLevel, // Keep current motivation level
+      primaryReason: _selectedReasons.isNotEmpty
+          ? _selectedReasons.first
+          : null,
+      selectedReasons: _selectedReasons, // Keep any selected reasons
+    );
 
+    // Save to SharedPreferences for backup
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('user_goals', []);
-    await prefs.setString('user_timeline', '');
-    await prefs.setInt('user_motivation_level', 0);
-    await prefs.setString('user_primary_reason', '');
+    await prefs.setStringList('user_goals', _selectedGoals.toList());
+    await prefs.setString('user_timeline', _selectedTimeline ?? '');
+    if (_selectedDate != null) {
+      await prefs.setString(
+        'user_target_date',
+        _selectedDate!.toIso8601String(),
+      );
+    }
+    await prefs.setInt('user_motivation_level', _motivationLevel);
+    await prefs.setStringList(
+      'user_selected_reasons',
+      _selectedReasons.toList(),
+    );
+    await prefs.setString(
+      'user_primary_reason',
+      onboardingData.primaryReason ?? '',
+    );
 
     if (mounted) {
       Navigator.of(context).pushReplacement(
@@ -672,6 +1195,93 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
       },
       child: child,
     );
+  }
+
+  Widget _buildSliderLabel(IconData icon, String label, bool isActive) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color: isActive
+              ? _getMotivationColor(_motivationLevel)
+              : AppColors.textSecondary,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: AppTextStyles.bodySmall(context).copyWith(
+            fontSize: 13,
+            fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+            color: isActive
+                ? _getMotivationColor(_motivationLevel)
+                : AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Add this method to _GoalSetupScreenState class
+  int _calculateDaysRemaining(DateTime targetDate) {
+    final now = DateTime.now();
+    final difference = targetDate.difference(
+      DateTime(now.year, now.month, now.day),
+    );
+    return difference.inDays;
+  }
+
+  IconData _getMotivationIcon(int level) {
+    if (level <= 3) return Icons.explore_outlined;
+    if (level <= 6) return Icons.lightbulb_outline;
+    return Icons.favorite_rounded;
+  }
+
+  // Add this helper method for titles
+  String _getMotivationTitle(int level) {
+    if (level <= 3) return "Exploration Phase";
+    if (level <= 6) return "Contemplation Phase";
+    return "Action Phase";
+  }
+
+  // Add this method to calculate and display timeline from date
+  String _calculateTimelineFromDate(DateTime targetDate) {
+    final now = DateTime.now();
+    final difference = targetDate.difference(now);
+    final days = difference.inDays;
+    final months = (days / 30).floor();
+    final years = (days / 365).floor();
+
+    if (years > 0) {
+      return '$years ${years == 1 ? 'year' : 'years'}';
+    } else if (months > 0) {
+      final remainingDays = days % 30;
+      if (remainingDays > 0) {
+        return '$months ${months == 1 ? 'month' : 'months'} $remainingDays ${remainingDays == 1 ? 'day' : 'days'}';
+      }
+      return '$months ${months == 1 ? 'month' : 'months'}';
+    } else if (days >= 7) {
+      final weeks = (days / 7).floor();
+      final remainingDays = days % 7;
+      if (remainingDays > 0) {
+        return '$weeks ${weeks == 1 ? 'week' : 'weeks'} $remainingDays ${remainingDays == 1 ? 'day' : 'days'}';
+      }
+      return '$weeks ${weeks == 1 ? 'week' : 'weeks'}';
+    } else {
+      return '$days ${days == 1 ? 'day' : 'days'}';
+    }
+  }
+
+  // Update the existing description method
+  String _getMotivationDescription(int level) {
+    if (level <= 3) {
+      return "You're in the exploration phase. That's a great first step! Take your time to understand your patterns and build awareness.";
+    }
+    if (level <= 6) {
+      return "You're seriously considering change. This awareness is powerful and shows you're thinking about your next steps.";
+    }
+    return "You're ready to commit and take action! Your determination and readiness will be key drivers in achieving your goals.";
   }
 }
 

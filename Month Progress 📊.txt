@@ -1,0 +1,29 @@
+Month Progress 📊
+
+Percentage INCREASES
+Formula: (mindfulDays / daysPassed * 100)
+Example:
+
+Before: 5 mindful days / 21 days passed = 23.8%
+After: 6 mindful days / 21 days passed = 28.6%
+
+
+
+1. Total Saved (Main Counter)
+
+dart// For each day in the current month:
+if (dayType == 'mindful') {
+  // Saved ALL substance costs
+  daySavings = sum of all substance costs per day
+} else if (dayType == 'reduced') {
+  // Saved 50% of costs
+  daySavings = sum of all substance costs * 0.5
+} else if (dayType == 'used') {
+  // No savings
+  daySavings = 0
+}
+Formula: Sum of all daily savings for the current month only
+
+2. Daily Average
+dartdailyAverage = totalSaved / currentDayOfMonth
+Example: If you saved $80 over 20 days = $4/day average

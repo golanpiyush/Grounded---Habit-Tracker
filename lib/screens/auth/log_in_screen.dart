@@ -1,6 +1,7 @@
 // log_in_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:grounded/providers/userDB.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../utils/validators.dart';
@@ -25,8 +26,23 @@ class _LogInScreenState extends State<LogInScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final UserDatabaseService _userService = UserDatabaseService();
 
   bool _isLoading = false;
+  @override
+  void initState() {
+    super.initState();
+    // Add listeners to rebuild UI when text changes
+    _emailController.addListener(() => setState(() {}));
+    _passwordController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   bool get _isFormValid {
     return _emailController.text.isNotEmpty &&
@@ -40,11 +56,42 @@ class _LogInScreenState extends State<LogInScreen> {
 
     setState(() => _isLoading = true);
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Use UserDatabaseService for login
+      final authResponse = await _userService.logIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
-    setState(() => _isLoading = false);
-    widget.onLoginSuccess();
+      if (authResponse.user != null) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+
+          // Success - navigate to next screen
+          widget.onLoginSuccess();
+
+          // Optional: Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Welcome back!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_getErrorMessage(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -128,11 +175,30 @@ class _LogInScreenState extends State<LogInScreen> {
                 const SizedBox(height: 48),
 
                 // Login Button
-                CustomButton(
-                  text: 'Log In',
-                  onPressed: _isFormValid && !_isLoading ? _submitForm : null,
-                  isLoading: _isLoading,
-                  enabled: _isFormValid && !_isLoading,
+                // Login Button
+                ValueListenableBuilder(
+                  valueListenable: _emailController,
+                  builder: (context, emailValue, _) {
+                    return ValueListenableBuilder(
+                      valueListenable: _passwordController,
+                      builder: (context, passwordValue, _) {
+                        final isFormValid =
+                            _emailController.text.isNotEmpty &&
+                            _passwordController.text.isNotEmpty &&
+                            Validators.isValidEmail(_emailController.text) &&
+                            _passwordController.text.length >= 6;
+
+                        return CustomButton(
+                          text: 'Log In',
+                          onPressed: isFormValid && !_isLoading
+                              ? _submitForm
+                              : null,
+                          isLoading: _isLoading,
+                          enabled: isFormValid && !_isLoading,
+                        );
+                      },
+                    );
+                  },
                 ),
 
                 const Spacer(),
@@ -167,5 +233,23 @@ class _LogInScreenState extends State<LogInScreen> {
         ),
       ),
     );
+  }
+
+  String _getErrorMessage(dynamic error) {
+    final errorString = error.toString();
+
+    if (errorString.contains('Invalid login credentials') ||
+        errorString.contains('invalid_credentials')) {
+      return 'Invalid email or password. Please try again.';
+    } else if (errorString.contains('Email not confirmed')) {
+      return 'Please verify your email address before logging in.';
+    } else if (errorString.contains('User not found')) {
+      return 'No account found with this email address.';
+    } else if (errorString.contains('network') ||
+        errorString.contains('Connection')) {
+      return 'Network error. Please check your connection and try again.';
+    } else {
+      return 'Login failed. Please try again.';
+    }
   }
 }

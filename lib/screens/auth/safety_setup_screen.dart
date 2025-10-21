@@ -1,7 +1,7 @@
 // safety_setup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:grounded/Models/onboarding_data.dart';
+import 'package:grounded/models/onboarding_data.dart';
 import 'package:grounded/screens/auth/app_preferences_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -89,6 +89,50 @@ class _SafetySetupScreenState extends State<SafetySetupScreen>
   }
 
   Future<void> _handleContinue() async {
+    // PRINT ALL SAFETY SETUP DATA BEFORE SAVING AND NAVIGATION
+    print('\n=== NAVIGATING TO APP PREFERENCES SCREEN ===');
+    print('🛡️ SAFETY SETUP DATA:');
+    print('-------------------------------------------');
+
+    // Support System
+    print('Support System: ${_supportSystem ?? 'Not selected'}');
+
+    // Emergency Contacts
+    print(
+      '\n📞 Emergency Contacts (${_emergencyContacts.length}/$_maxContacts):',
+    );
+    if (_emergencyContacts.isEmpty) {
+      print('  No emergency contacts added');
+    } else {
+      for (int i = 0; i < _emergencyContacts.length; i++) {
+        final contact = _emergencyContacts[i];
+        print('  ${i + 1}. ${contact['name']} - ${contact['number']}');
+      }
+    }
+
+    // Crisis Resources
+    print('\n🆘 Crisis Resources:');
+    print('  Enabled: ${_crisisResourcesEnabled ? 'Yes' : 'No'}');
+    if (_crisisResourcesEnabled) {
+      print('  Available resources:');
+      for (final resource in _crisisResources) {
+        print('    - ${resource['name']}: ${resource['number']}');
+      }
+    }
+
+    // Withdrawal Concerns
+    print('\n💊 Withdrawal Concerns:');
+    print('  Medical Supervision: ${_withdrawalConcern ?? 'Not selected'}');
+
+    // Harm Reduction
+    print('\n⚠️ Harm Reduction:');
+    print('  Usage Context: ${_usageContext ?? 'Not selected'}');
+    print(
+      '  Harm Reduction Info Enabled: ${_harmReductionInfo ? 'Yes' : 'No'}',
+    );
+
+    print('-------------------------------------------');
+
     // Update onboardingData with safety setup data
     final finalData = widget.onboardingData.copyWith(
       emergencyContacts: _emergencyContacts,
@@ -98,6 +142,8 @@ class _SafetySetupScreenState extends State<SafetySetupScreen>
       crisisResourcesEnabled: _crisisResourcesEnabled,
       harmReductionInfo: _harmReductionInfo,
     );
+
+    print('\n💾 SAVING SAFETY DATA TO SHARED PREFERENCES...');
 
     // Save to SharedPreferences for backup
     final prefs = await SharedPreferences.getInstance();
@@ -109,10 +155,47 @@ class _SafetySetupScreenState extends State<SafetySetupScreen>
         .join(',');
     await prefs.setString('emergency_contacts', contactsJson);
 
+    print('  Emergency contacts JSON: $contactsJson');
+
     await prefs.setBool('crisis_resources_enabled', _crisisResourcesEnabled);
     await prefs.setString('withdrawal_concern', _withdrawalConcern ?? '');
     await prefs.setString('usage_context', _usageContext ?? '');
     await prefs.setBool('harm_reduction_info', _harmReductionInfo);
+
+    print('✅ SAFETY DATA SAVED SUCCESSFULLY');
+
+    // Print complete onboarding data summary
+    print('\n📋 COMPLETE ONBOARDING DATA SUMMARY:');
+    print('==========================================');
+    print('🎯 GOALS & MOTIVATION (Screen 1):');
+    print('  Selected Goals: ${finalData.selectedGoals}');
+    print('  Timeline: ${finalData.selectedTimeline ?? 'Not set'}');
+    print('  Motivation Level: ${finalData.motivationLevel ?? 'Not set'}');
+    print('  Primary Reason: ${finalData.primaryReason ?? 'Not set'}');
+
+    print('\n💊 SUBSTANCES (Screen 2):');
+    print('  Selected Substances: ${finalData.selectedSubstances}');
+    print('  Previous Attempts: ${finalData.previousAttempts ?? 'Not set'}');
+
+    print('\n📊 USAGE PATTERNS (Screen 3):');
+    print('  (Data saved in SharedPreferences per substance)');
+
+    print('\n🛡️ SAFETY SETUP (Screen 4):');
+    print('  Support System: ${finalData.supportSystem ?? 'Not set'}');
+    print('  Emergency Contacts Count: ${_emergencyContacts.length}');
+    if (_emergencyContacts.isNotEmpty) {
+      print('  Emergency Contacts List:');
+      for (int i = 0; i < _emergencyContacts.length; i++) {
+        print(
+          '    ${i + 1}. ${_emergencyContacts[i]['name']} - ${_emergencyContacts[i]['number']}',
+        );
+      }
+    }
+    print('  Withdrawal Concern: ${finalData.withdrawalConcern ?? 'Not set'}');
+    print('  Usage Context: ${finalData.usageContext ?? 'Not set'}');
+    print('  Crisis Resources: ${finalData.crisisResourcesEnabled ?? false}');
+    print('  Harm Reduction Info: ${finalData.harmReductionInfo ?? false}');
+    print('==========================================\n');
 
     if (mounted) {
       // Navigate to AppPreferencesScreen and pass final data
@@ -699,7 +782,14 @@ class _SafetySetupScreenState extends State<SafetySetupScreen>
   }
 
   void _addEmergencyContact() {
+    print('\n=== ATTEMPTING TO ADD EMERGENCY CONTACT ===');
+    print('Contact Name: "${_contactNameController.text}"');
+    print('Contact Number: "${_contactNumberController.text}"');
+    print('Current contacts count: ${_emergencyContacts.length}');
+    print('Max contacts: $_maxContacts');
+
     if (_contactNameController.text.trim().isEmpty) {
+      print('❌ FAILED: Contact name is empty');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a contact name')),
       );
@@ -707,6 +797,7 @@ class _SafetySetupScreenState extends State<SafetySetupScreen>
     }
 
     if (_emergencyContacts.length >= _maxContacts) {
+      print('❌ FAILED: Max contacts reached');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Maximum $_maxContacts contacts allowed')),
       );
@@ -718,9 +809,15 @@ class _SafetySetupScreenState extends State<SafetySetupScreen>
         'name': _contactNameController.text.trim(),
         'number': _contactNumberController.text.trim(),
       });
+      print('✅ SUCCESS: Contact added');
+      print('New contacts count: ${_emergencyContacts.length}');
+      print('Emergency contacts list: $_emergencyContacts');
+
       _contactNameController.clear();
       _contactNumberController.clear();
     });
+
+    print('==========================================\n');
   }
 
   void _removeEmergencyContact(int index) {

@@ -40,7 +40,7 @@ class AppTextStyles {
   }
 
   static TextStyle bodyMedium(BuildContext context) {
-    return GoogleFonts.inter(
+    return GoogleFonts.cabin(
       fontSize: 16,
       fontWeight: FontWeight.w400,
       color: AppColors.textPrimary,
@@ -48,7 +48,7 @@ class AppTextStyles {
   }
 
   static TextStyle bodySmall(BuildContext context) {
-    return GoogleFonts.inter(
+    return GoogleFonts.cabin(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       color: AppColors.textSecondary,

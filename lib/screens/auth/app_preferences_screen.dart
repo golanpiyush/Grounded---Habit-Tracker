@@ -1,7 +1,8 @@
 // app_preferences_screen.dart
 import 'package:flutter/material.dart';
-import 'package:grounded/Models/dashboard_Data.dart';
-import 'package:grounded/Models/onboarding_data.dart';
+import 'package:grounded/models/onboarding_data.dart';
+import 'package:grounded/providers/userDB.dart';
+import 'package:grounded/screens/home_screen.dart';
 import 'package:grounded/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,11 +10,12 @@ import '../../widgets/custom_button.dart';
 
 class AppPreferencesScreen extends StatefulWidget {
   final VoidCallback onComplete;
+  final OnboardingData onboardingData; // ADD THIS LINE
 
   const AppPreferencesScreen({
     Key? key,
     required this.onComplete,
-    required OnboardingData onboardingData,
+    required this.onboardingData, // ADD THIS PARAMETER
   }) : super(key: key);
 
   @override
@@ -22,6 +24,8 @@ class AppPreferencesScreen extends StatefulWidget {
 
 class _AppPreferencesScreenState extends State<AppPreferencesScreen>
     with SingleTickerProviderStateMixin {
+  final UserDatabaseService _dbService = UserDatabaseService();
+
   String _selectedTheme = 'System';
   bool _dailyReminders = true;
   String _reminderTime = '20:00';
@@ -118,29 +122,193 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
   }
 
   Future<void> _handleComplete() async {
+    print('\n=== COMPLETING ONBOARDING - NAVIGATING TO HOME ===');
+    print('⚙️ APP PREFERENCES DATA:');
+    print('-------------------------------------------');
+    print('Selected Theme: $_selectedTheme');
+    print('Daily Reminders: ${_dailyReminders ? 'Enabled' : 'Disabled'}');
+    if (_dailyReminders) {
+      print('Reminder Time: $_reminderTime');
+    }
+    print('Analytics Enabled: ${_analyticsEnabled ? 'Yes' : 'No'}');
+    print('Motivational Messages: ${_motivationalMessages ? 'Yes' : 'No'}');
+    print('Data Sharing: $_dataSharing');
+    print('  └─ ${_getDataSharingDescription(_dataSharing)}');
+    print('-------------------------------------------');
+
+    print('\n💾 SAVING APP PREFERENCES TO SHARED PREFERENCES...');
+
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString('app_theme', _selectedTheme);
+    print('  ✓ Theme saved: $_selectedTheme');
 
-    // Update theme using Provider
+    // Update theme using Provider (with error handling)
     if (mounted) {
-      await Provider.of<ThemeProvider>(
-        context,
-        listen: false,
-      ).setTheme(_selectedTheme);
+      try {
+        await Provider.of<ThemeProvider>(
+          context,
+          listen: false,
+        ).setTheme(_selectedTheme);
+        print('  ✓ Theme applied via Provider');
+      } catch (e) {
+        print('  ⚠ ThemeProvider not available (will apply on restart): $e');
+      }
     }
 
     await prefs.setBool('daily_reminders', _dailyReminders);
+    print('  ✓ Daily reminders saved: $_dailyReminders');
+
     await prefs.setString('reminder_time', _reminderTime);
+    print('  ✓ Reminder time saved: $_reminderTime');
+
     await prefs.setBool('analytics_enabled', _analyticsEnabled);
+    print('  ✓ Analytics enabled saved: $_analyticsEnabled');
+
     await prefs.setBool('motivational_messages', _motivationalMessages);
+    print('  ✓ Motivational messages saved: $_motivationalMessages');
+
     await prefs.setString('data_sharing', _dataSharing);
+    print('  ✓ Data sharing preference saved: $_dataSharing');
+
     await prefs.setBool('onboarding_complete', true);
+    print('  ✓ Onboarding marked as complete');
+
+    print('✅ ALL APP PREFERENCES SAVED SUCCESSFULLY');
+
+    // ============================================
+    // SAVE TO SUPABASE DATABASE
+    // ============================================
+    print('\n💾 SAVING ONBOARDING DATA TO SUPABASE DATABASE...');
+
+    try {
+      final currentUser = _dbService.currentUser;
+
+      if (currentUser != null) {
+        print('  👤 User ID: ${currentUser.id}');
+
+        // Save app preferences to database
+        await _dbService.updateAppPreferences(
+          userId: currentUser.id,
+          appTheme: _selectedTheme,
+          dailyReminders: _dailyReminders,
+          reminderTime: _reminderTime,
+          analyticsEnabled: _analyticsEnabled,
+          motivationalMessages: _motivationalMessages,
+          dataSharing: _dataSharing,
+        );
+        print('  ✅ App preferences saved to database');
+
+        // Save onboarding data
+        await _dbService.saveOnboardingData(
+          userId: currentUser.id,
+          onboardingData: widget.onboardingData,
+        );
+        print('  ✅ Onboarding data saved to database');
+      } else {
+        print('  ⚠ No user logged in - skipping database save');
+      }
+    } catch (e) {
+      print('  ❌ Failed to save onboarding data to Supabase: $e');
+    }
+
+    // ============================================
+    // FINAL SUMMARY
+    // ============================================
+    print('\n' + '=' * 50);
+    print('🎉 ONBOARDING COMPLETE - FINAL DATA SUMMARY');
+    print('=' * 50);
+
+    print('\n📋 SCREEN 1 - GOALS & MOTIVATION:');
+    print('  Goals: ${prefs.getStringList('user_goals') ?? 'Not saved'}');
+    print('  Timeline: ${prefs.getString('user_timeline') ?? 'Not saved'}');
+    print(
+      '  Motivation Level: ${prefs.getInt('user_motivation_level') ?? 'Not saved'}',
+    );
+    print(
+      '  Primary Reason: ${prefs.getString('user_primary_reason') ?? 'Not saved'}',
+    );
+
+    print('\n💊 SCREEN 2 - SUBSTANCE SELECTION:');
+    final substances = prefs.getStringList('user_substances') ?? [];
+    print(
+      '  Selected Substances: ${substances.isEmpty ? 'None' : substances.join(', ')}',
+    );
+    print(
+      '  Previous Attempts: ${prefs.getString('user_previous_attempts') ?? 'Not saved'}',
+    );
+    print(
+      '  Substance Durations: ${prefs.getString('user_substance_durations') ?? 'Not saved'}',
+    );
+
+    print('\n📊 SCREEN 3 - USAGE PATTERNS:');
+    if (substances.isNotEmpty) {
+      for (final substance in substances) {
+        print('  ── $substance ──');
+        print(
+          '    Frequency: ${prefs.getString('${substance}_frequency') ?? 'Not set'}',
+        );
+        print(
+          '    Context: ${prefs.getString('${substance}_context') ?? 'Not set'}',
+        );
+        print(
+          '    Methods: ${prefs.getStringList('${substance}_consumptionMethods') ?? 'Not set'}',
+        );
+        print(
+          '    Amounts: ${prefs.getString('${substance}_typicalAmounts') ?? 'Not set'}',
+        );
+        print(
+          '    Cost: ${prefs.getString('${substance}_costPerUse') ?? 'Not set'}',
+        );
+        print(
+          '    Triggers: ${prefs.getStringList('${substance}_triggers') ?? 'Not set'}',
+        );
+        print(
+          '    Impacts: ${prefs.getStringList('${substance}_impacts') ?? 'Not set'}',
+        );
+        print(
+          '    Time of Day: ${prefs.getString('${substance}_timeOfDay') ?? 'Not set'}',
+        );
+      }
+    } else {
+      print('  No substances tracked');
+    }
+
+    print('\n🛡️ SCREEN 4 - SAFETY SETUP:');
+    print(
+      '  Support System: ${prefs.getString('user_support_system') ?? 'Not saved'}',
+    );
+    print(
+      '  Emergency Contacts: ${prefs.getString('user_emergency_contacts') ?? 'None'}',
+    );
+    print(
+      '  Withdrawal Concern: ${prefs.getString('user_withdrawal_concern') ?? 'Not saved'}',
+    );
+    print(
+      '  Usage Context: ${prefs.getString('user_usage_context') ?? 'Not saved'}',
+    );
+    print(
+      '  Crisis Resources: ${prefs.getBool('user_crisis_resources_enabled') ?? false}',
+    );
+    print(
+      '  Harm Reduction Info: ${prefs.getBool('user_harm_reduction_info') ?? false}',
+    );
+
+    print('\n⚙️ SCREEN 5 - APP PREFERENCES:');
+    print('  Theme: $_selectedTheme');
+    print('  Daily Reminders: $_dailyReminders');
+    print('  Reminder Time: $_reminderTime');
+    print('  Analytics: $_analyticsEnabled');
+    print('  Motivational Messages: $_motivationalMessages');
+    print('  Data Sharing: $_dataSharing');
+
+    print('\n' + '=' * 50);
+    print('🚀 LAUNCHING HOME SCREEN');
+    print('=' * 50 + '\n');
 
     if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => DashboardScreen()),
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
       );
     }
   }
@@ -304,6 +472,7 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
                       const SizedBox(height: 40),
 
                       // Theme Selection
+                      // Theme Selection
                       _buildAnimatedSection(
                         delay: 100,
                         child: _PreferenceSection(
@@ -318,11 +487,18 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
                                 isSelected: isSelected,
                                 onTap: () async {
                                   setState(() => _selectedTheme = theme);
-                                  // Update theme immediately
-                                  await Provider.of<ThemeProvider>(
-                                    context,
-                                    listen: false,
-                                  ).setTheme(theme);
+                                  // Update theme immediately (with error handling)
+                                  if (mounted) {
+                                    try {
+                                      await Provider.of<ThemeProvider>(
+                                        context,
+                                        listen: false,
+                                      ).setTheme(theme);
+                                    } catch (e) {
+                                      // ThemeProvider not available, theme will be saved to prefs anyway
+                                      print('ThemeProvider not available: $e');
+                                    }
+                                  }
                                 },
                               );
                             }).toList(),

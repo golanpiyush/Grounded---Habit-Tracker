@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grounded - Professional Dashboard</title>
+    <!-- Lucide Icons CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/umd/lucide.min.js"></script>
+    <style>
+        /* ============================================================================
+           DESIGN SYSTEM - Professional & Clean
+        ============================================================================ */
+        :root {
+            --primary-green: #2D5016;
+            --secondary-green: #3D5A3C;
+            --accent-orange: #E89537;
+            --success-green: #10B981;
+            --background: #FAFAF8;
+            --card: #FFFFFF;
+            --text-primary: #1A1A1A;
+            --text-secondary: #6B7280;
+            --text-tertiary: #9CA3AF;
+            --border: #E5E7EB;
+            --border-radius: 16px;
+            --spacing-xs: 8px;
+            --spacing-sm: 12px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding: var(--spacing-md);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* ============================================================================
+           HEADER
+        ============================================================================ */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-md);
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .app-icon-wrapper {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .app-icon {
+            color: white;
+            width: 24px;
+            height: 24px;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
+        }
+
+        .user-greeting {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .date-display {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        .icon-button {
+            background: var(--card);
+            border: 1px solid var(--border);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .icon-button:hover {
+            background-color: var(--background);
+            border-color: var(--text-tertiary);
+        }
+
+        .icon-button svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-secondary);
+        }
+
+        /* ============================================================================
+           STATS GRID
+        ============================================================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .stat-card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+            min-height: 110px;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-green);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-icon-wrapper {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-icon-wrapper.streak {
+            background-color: rgba(234, 88, 12, 0.1);
+        }
+
+        .stat-icon-wrapper.month {
+            background-color: rgba(168, 85, 247, 0.1);
+        }
+
+        .stat-icon-wrapper.average {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        .stat-icon-wrapper.savings {
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+
+        .stat-icon-wrapper svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .stat-icon-wrapper.streak svg { color: #EA580C; }
+        .stat-icon-wrapper.month svg { color: #A855F7; }
+        .stat-icon-wrapper.average svg { color: #3B82F6; }
+        .stat-icon-wrapper.savings svg { color: #10B981; }
+
+        .stat-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* ============================================================================
+           CHECK-IN CARD
+        ============================================================================ */
+        .section {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .checkin-card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .mood-indicator {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+            border: 2px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .mood-indicator svg {
+            width: 28px;
+            height: 28px;
+            color: var(--success-green);
+        }
+
+        .checkin-content {
+            flex: 1;
+        }
+
+        .checkin-status {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .checkin-detail {
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .checkin-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background-color: rgba(16, 185, 129, 0.1);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--success-green);
+        }
+
+        .checkin-badge svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* ============================================================================
+           WEEKLY CHART
+        ============================================================================ */
+        .weekly-card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .chart-container {
+            height: 180px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-sm) 0;
+        }
+
+        .chart-bar-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .chart-bar {
+            width: 100%;
+            max-width: 32px;
+            border-radius: 8px;
+            margin-bottom: var(--spacing-xs);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .chart-bar:hover {
+            opacity: 0.85;
+            transform: translateY(-2px);
+        }
+
+        .chart-bar.sober {
+            background: linear-gradient(180deg, var(--success-green), rgba(16, 185, 129, 0.8));
+        }
+
+        .chart-bar.reduced {
+            background: linear-gradient(180deg, var(--accent-orange), rgba(232, 149, 55, 0.8));
+        }
+
+        .chart-bar.used {
+            background: linear-gradient(180deg, var(--secondary-green), rgba(61, 90, 60, 0.8));
+        }
+
+        .bar-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .bar-label.today {
+            color: var(--primary-green);
+            font-weight: 600;
+        }
+
+        .weekly-summary {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px;
+            padding: var(--spacing-sm) var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .summary-icon {
+            width: 20px;
+            height: 20px;
+            color: var(--success-green);
+        }
+
+        /* ============================================================================
+           INSIGHTS
+        ============================================================================ */
+        .insights-grid {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .insight-card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--success-green);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            transition: var(--transition);
+        }
+
+        .insight-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateX(2px);
+        }
+
+        .insight-icon-wrapper {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+        }
+
+        .insight-icon-wrapper svg {
+            width: 24px;
+            height: 24px;
+            color: var(--success-green);
+        }
+
+        .insight-content {
+            flex: 1;
+        }
+
+        .insight-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .insight-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* ============================================================================
+           GOALS
+        ============================================================================ */
+        .goals-card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .goal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .goal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .goal-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .goal-percentage {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-green);
+        }
+
+        .progress-container {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .progress-bar {
+            height: 10px;
+            background-color: rgba(45, 80, 22, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-green), var(--success-green));
+            border-radius: 5px;
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .progress-metric {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .progress-encouragement {
+            color: var(--success-green);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .progress-encouragement svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* ============================================================================
+           FAB
+        ============================================================================ */
+        .fab {
+            position: fixed;
+            bottom: var(--spacing-lg);
+            right: var(--spacing-lg);
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            box-shadow: 0 8px 24px rgba(45, 80, 22, 0.3);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .fab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(45, 80, 22, 0.4);
+        }
+
+        .fab svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* ============================================================================
+           ANIMATIONS
+        ============================================================================ */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            opacity: 0;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+        .delay-5 { animation-delay: 0.5s; }
+        .delay-6 { animation-delay: 0.6s; }
+        .delay-7 { animation-delay: 0.7s; }
+        .delay-8 { animation-delay: 0.8s; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header animate-in">
+        <div class="brand-section">
+            <div class="app-icon-wrapper">
+                <i data-lucide="sprout" class="app-icon"></i>
+            </div>
+            <div class="brand-text">
+                <div class="app-name">Grounded</div>
+                <div class="user-greeting">Hi Alex</div>
+                <div class="date-display" id="current-date"></div>
+            </div>
+        </div>
+        <button class="icon-button">
+            <i data-lucide="settings"></i>
+        </button>
+    </header>
+
+    <!-- Stats Grid -->
+    <section class="stats-grid">
+        <div class="stat-card animate-in delay-1">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper streak">
+                    <i data-lucide="flame"></i>
+                </div>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">7</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+        </div>
+        <div class="stat-card animate-in delay-2">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper month">
+                    <i data-lucide="trophy"></i>
+                </div>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">18</div>
+                <div class="stat-label">This Month</div>
+            </div>
+        </div>
+        <div class="stat-card animate-in delay-3">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper average">
+                    <i data-lucide="bar-chart-3"></i>
+                </div>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">1.4</div>
+                <div class="stat-label">Weekly Avg</div>
+            </div>
+        </div>
+        <div class="stat-card animate-in delay-4">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper savings">
+                    <i data-lucide="piggy-bank"></i>
+                </div>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">$145</div>
+                <div class="stat-label">Money Saved</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Today's Check-in -->
+    <section class="section">
+        <div class="section-header animate-in delay-1">
+            <h2 class="section-title">Today's Check-in</h2>
+        </div>
+        <div class="checkin-card animate-in delay-2">
+            <div class="mood-indicator">
+                <i data-lucide="smile"></i>
+            </div>
+            <div class="checkin-content">
+                <div class="checkin-status">Feeling good</div>
+                <div class="checkin-detail">
+                    <span class="checkin-badge">
+                        <i data-lucide="check-circle"></i>
+                        Mindful day
+                    </span>
+                </div>
+            </div>
+            <button class="icon-button">
+                <i data-lucide="pencil"></i>
+            </button>
+        </div>
+    </section>
+
+    <!-- Weekly Overview -->
+    <section class="section">
+        <div class="section-header animate-in delay-3">
+            <h2 class="section-title">Weekly Overview</h2>
+        </div>
+        <div class="weekly-card animate-in delay-4">
+            <div class="chart-container">
+                <div class="chart-bar-wrapper">
+                    <div class="chart-bar used" style="height: 60px;"></div>
+                    <div class="bar-label">Mon</div>
+                </div>
+                <div class="chart-bar-wrapper">
+                    <div class="chart-bar sober" style="height: 140px;"></div>
+                    <div class="bar-label">Tue</div>
+                </div>
+                <div class="chart-bar-wrapper">
+                    <div class="chart-bar sober" style="height: 140px;"></div>
+                    <div class="bar-label">Wed</div>
+                </div>
+                <div class="chart-bar-wrapper">
+                    <div class="chart-bar reduced" style="height: 100px;"></div>
+                    <div class="bar-label">Thu</div>
+                </div>
+                <div class="chart-bar-wrapper">
+                    <div class="chart-bar sober" style="height: 140px;"></div>
+                    <div class="bar-label">Fri</div>
+                </div>
+                <div class="chart-bar-wrapper">
+                    <div class="chart-bar sober" style="height: 140px;"></div>
+                    <div class="bar-label">Sat</div>
+                </div>
+                <div class="chart-bar-wrapper">
+                    <div class="chart-bar sober" style="height: 140px;"></div>
+                    <div class="bar-label today">Sun</div>
+                </div>
+            </div>
+            <div class="weekly-summary">
+                <i data-lucide="check-circle" class="summary-icon"></i>
+                <span>6 mindful days this week</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pattern Insights -->
+    <section class="section">
+        <div class="section-header animate-in delay-5">
+            <h2 class="section-title">Pattern Insights</h2>
+        </div>
+        <div class="insights-grid">
+            <div class="insight-card animate-in delay-6">
+                <div class="insight-icon-wrapper">
+                    <i data-lucide="trending-up"></i>
+                </div>
+                <div class="insight-content">
+                    <div class="insight-title">Weekday Progress</div>
+                    <div class="insight-description">You have 78% mindful days on weekdays</div>
+                </div>
+            </div>
+            <div class="insight-card animate-in delay-7">
+                <div class="insight-icon-wrapper">
+                    <i data-lucide="lightbulb"></i>
+                </div>
+                <div class="insight-content">
+                    <div class="insight-title">Pattern Detected</div>
+                    <div class="insight-description">Thursday tends to be more challenging</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Goal Progress -->
+    <section class="section">
+        <div class="section-header animate-in delay-8">
+            <h2 class="section-title">Goal Progress</h2>
+        </div>
+        <div class="goals-card animate-in delay-8">
+            <div class="goal-header">
+                <div>
+                    <div class="goal-title">Reduce by 50%</div>
+                    <div class="goal-subtitle">Long-term goal</div>
+                </div>
+                <div class="goal-percentage">68%</div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 68%;"></div>
+                </div>
+                <div class="progress-info">
+                    <span class="progress-metric">68% achieved</span>
+                    <span class="progress-encouragement">
+                        <i data-lucide="target"></i>
+                        Keep going
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAB -->
+    <button class="fab">
+        <i data-lucide="plus"></i>
+        <span>Add Entry</span>
+    </button>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Update date
+        const dateElement = document.getElementById('current-date');
+        const now = new Date();
+        const options = { weekday: 'long', month: 'short', day: 'numeric' };
+        dateElement.textContent = now.toLocaleDateString('en-US', options);
+
+        // Animate progress bar on load
+        window.addEventListener('load', () => {
+            const progressFill = document.querySelector('.progress-fill');
+            setTimeout(() => {
+                progressFill.style.width = '68%';
+            }, 500);
+        });
+    </script>
+</body>
+</html>

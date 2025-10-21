@@ -1,5 +1,5 @@
-name: grounded
-description: "Grounded Habit Trackker."
+name: Grounded
+description: "Grounded -- Habit Tracker"
 
 publish_to: 'none' 
 
@@ -11,15 +11,21 @@ dependencies:
   flutter:
     sdk: flutter
 
+  shimmer:
+  emojis:
+  flutter_emoji_feedback:
   flutter_svg:
   google_fonts:
   shared_preferences:
   provider:
+  image_picker:
   clipboard: 
   awesome_notifications:
   permission_handler:
   firebase_messaging:
   flutter_contacts:
+  supabase_flutter:
+  flutter_riverpod:
   
 
   cupertino_icons: ^1.0.8
@@ -42,7 +48,81 @@ flutter:
     - assets/icon/app_icon.png
     - assets/logos/google-icon.png
 
+    # Illustrations
+    - assets/illustrations/sun.png
+    - assets/illustrations/moon.png
+    - assets/illustrations/1st_place_medal.png
+    - assets/illustrations/2nd_place_medal.png
+    - assets/illustrations/3rd_place_medal.png
+    - assets/illustrations/bar_chart.png
+    - assets/illustrations/beaming_face_with_smiling_eyes.png
+    - assets/illustrations/chart_increasing.png
+    - assets/illustrations/check_mark.png
+    - assets/illustrations/cloud_with_rain.png
+    - assets/illustrations/cloud_with_snow.png
+    - assets/illustrations/crying_cat.png
+    - assets/illustrations/crying_face.png
+    - assets/illustrations/fallen_leafs.png
+    - assets/illustrations/gear.png
+    - assets/illustrations/target.png
+    - assets/illustrations/fire.png
+    - assets/illustrations/sunset.png
+    - assets/illustrations/sunrise.png
+    - assets/illustrations/night.png
+    - assets/illustrations/goals.png
+    - assets/illustrations/pill.png
+    - assets/illustrations/calendar.png
+    - assets/illustrations/bell.png
+    - assets/illustrations/sparkles.png
+    - assets/illustrations/palette.png
+    - assets/illustrations/download.png
+    - assets/illustrations/shield.png
+    - assets/illustrations/trash.png
+    - assets/illustrations/logout.png
+    - assets/illustrations/grinning_face.png
+    - assets/illustrations/grinning_face_with_smiling_eyes.png
+    - assets/illustrations/light_bulb.png
+    - assets/illustrations/money_bag.png
+    - assets/illustrations/neutral_face.png
+    - assets/illustrations/pencil.png
+    - assets/illustrations/plus.png
+    - assets/illustrations/seedling.png
+    - assets/illustrations/sleeping_face.png
+    - assets/illustrations/sleepy_face.png
+    - assets/illustrations/smiling_face_with_smiling_eyes.png
+    - assets/illustrations/smiling_face_with_sunglasses.png
+    - assets/illustrations/sun.png
+    - assets/illustrations/trophy.png
+    - assets/illustrations/worried_face.png
+    - assets/illustrations/memo.png
+    - assets/illustrations/fileFolder.png
+    - assets/illustrations/locks.png
+    - assets/illustrations/link.png
+    - assets/illustrations/family.png
+    - assets/illustrations/email.png
+    - assets/illustrations/heart.png
 
+
+#  Substances 
+    - assets/substances/alcohol.png
+    - assets/substances/herb.png
+    - assets/substances/cigarette.png
+    - assets/substances/caffeine.png
+    - assets/substances/vaping.png
+    - assets/substances/prescription.png
+    - assets/substances/cocaine.png
+    - assets/substances/heroin.png
+    - assets/substances/fentanyl.png
+    - assets/substances/meth.png
+    - assets/substances/mdma.png
+    - assets/substances/lsd.png
+    - assets/substances/psilocybin.png
+    - assets/substances/ketamine.png
+    - assets/substances/benzos.png
+    - assets/substances/opioids.png
+    - assets/substances/amphetamines.png
+    - assets/substances/sugar.png
+    - assets/substances/others.png
 
 
 flutter_icons:

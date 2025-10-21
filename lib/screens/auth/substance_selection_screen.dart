@@ -2,7 +2,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:grounded/Models/onboarding_data.dart';
+import 'package:grounded/models/onboarding_data.dart';
 import 'package:grounded/screens/auth/usage_patterns_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_button.dart';
@@ -228,26 +228,7 @@ class _SubstanceSelectionScreenState extends State<SubstanceSelectionScreen>
     // PRINT DATA BEFORE NAVIGATION
     print('=== NAVIGATING TO USAGE PATTERNS SCREEN ===');
     print('Selected Substances: ${_selectedSubstances.toList()}');
-    print('Substance Durations: $_substanceDurations');
-    print('Previous Attempts: $_previousAttempts');
-    print('Updated OnboardingData:');
-    print('- Goals: ${updatedData.selectedGoals}'); // ← From previous screen
-    print(
-      '- Timeline: ${updatedData.selectedTimeline}',
-    ); // ← From previous screen
-    print(
-      '- Motivation: ${updatedData.motivationLevel}',
-    ); // ← From previous screen
-    print('- Reason: ${updatedData.primaryReason}'); // ← From previous screen
-    print(
-      '- Substances: ${updatedData.selectedSubstances}',
-    ); // ← NEW from this screen
-    print(
-      '- Durations: ${updatedData.substanceDurations}',
-    ); // ← NEW from this screen
-    print(
-      '- Previous Attempts: ${updatedData.previousAttempts}',
-    ); // ← NEW from this screen
+
     print('==========================================');
 
     // Save ONLY substance-related data to SharedPreferences
