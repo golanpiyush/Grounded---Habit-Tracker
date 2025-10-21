@@ -1,9 +1,9 @@
 // app_preferences_screen.dart
 import 'package:flutter/material.dart';
-import 'package:grounded/models/onboarding_data.dart';
-import 'package:grounded/providers/userDB.dart';
-import 'package:grounded/screens/home_screen.dart';
-import 'package:grounded/theme/app_theme.dart';
+import 'package:Grounded/models/onboarding_data.dart';
+import 'package:Grounded/providers/userDB.dart';
+import 'package:Grounded/screens/home_screen.dart';
+import 'package:Grounded/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_button.dart';
@@ -26,7 +26,7 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
     with SingleTickerProviderStateMixin {
   final UserDatabaseService _dbService = UserDatabaseService();
 
-  String _selectedTheme = 'System';
+  String _selectedTheme = 'Light';
   bool _dailyReminders = true;
   String _reminderTime = '20:00';
   bool _analyticsEnabled = true;
@@ -35,7 +35,7 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  final List<String> _themeOptions = ['System', 'Light', 'Dark', 'AMOLED'];
+  final List<String> _themeOptions = ['Light', 'Dark', 'AMOLED'];
   final List<String> _dataSharingOptions = [
     'Anonymous',
     'Private',
@@ -72,7 +72,7 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _selectedTheme = prefs.getString('app_theme') ?? 'System';
+      _selectedTheme = prefs.getString('app_theme') ?? 'Light';
     });
   }
 

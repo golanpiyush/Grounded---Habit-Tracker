@@ -1,7 +1,7 @@
-import 'package:grounded/models/user_goal_progress_model.dart';
-import 'package:grounded/models/user_insight_model.dart';
-import 'package:grounded/models/user_weekly_model.dart';
-import 'package:grounded/models/userdailyentrymodel.dart' hide DailyEntry;
+import 'package:Grounded/models/user_goal_progress_model.dart';
+import 'package:Grounded/models/user_insight_model.dart';
+import 'package:Grounded/models/user_weekly_model.dart';
+import 'package:Grounded/models/userdailyentrymodel.dart' hide DailyEntry;
 
 class DashboardData {
   final int currentStreak;

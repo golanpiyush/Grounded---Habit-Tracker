@@ -1,9 +1,9 @@
 // sign_up_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:grounded/providers/userDB.dart';
-import 'package:grounded/screens/home_screen.dart';
-import 'package:grounded/theme/app_text_styles.dart';
+import 'package:Grounded/providers/userDB.dart';
+import 'package:Grounded/screens/home_screen.dart';
+import 'package:Grounded/theme/app_text_styles.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../utils/validators.dart';

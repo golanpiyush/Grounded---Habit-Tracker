@@ -1,9 +1,10 @@
+import 'package:Grounded/providers/theme_provider.dart'; // ADDED
+import 'package:Grounded/screens/auth/goal_setup_screen.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:grounded/providers/userDB.dart';
-import 'package:grounded/screens/home_screen.dart';
-import 'package:grounded/screens/welcome_intro_screen.dart';
+import 'package:Grounded/screens/home_screen.dart';
+import 'package:Grounded/screens/welcome_intro_screen.dart';
 import 'package:provider/provider.dart' as provider;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -16,11 +17,17 @@ import 'screens/auth/log_in_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // PRE-LOAD SharedPreferences BEFORE running app
+  final prefs = await SharedPreferences.getInstance();
+  print('📦 SharedPreferences loaded: ${prefs.getString('app_theme_mode')}');
+
   await Supabase.initialize(
     url: 'https://eaogxkwnygywdbnhjlap.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhb2d4a3dueWd5d2RibmhqbGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5NjYxMDMsImV4cCI6MjA3NTU0MjEwM30.OV7uGd-UkoG3LQ0rdUqnBAgFbaQr33QeVzdCSRSmk2o',
   );
+
   await AwesomeNotifications().initialize(null, [
     NotificationChannel(
       channelKey: 'safety_channel',
@@ -34,25 +41,33 @@ void main() async {
     ),
   ]);
 
-  runApp(const MyApp(hasSeenOnboarding: false));
+  // WRAP ProviderScope WITH OVERRIDE AT THE TOP LEVEL
+  runApp(
+    ProviderScope(
+      overrides: [
+        // Override the sharedPreferencesProvider with the pre-loaded instance
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key, required bool hasSeenOnboarding}) : super(key: key);
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return ProviderScope(
-      child: provider.MultiProvider(
-        providers: [
-          provider.ChangeNotifierProvider(create: (_) => OnboardingProvider()),
-          provider.ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ],
-        child: MaterialApp(
-          title: 'Grounded - Habit Tracker',
-          home: const AppNavigator(),
-          debugShowCheckedModeBanner: false,
-        ),
+    // NO ProviderScope here - it's already at the top in main()
+    return provider.MultiProvider(
+      providers: [
+        provider.ChangeNotifierProvider(create: (_) => OnboardingProvider()),
+        provider.ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Grounded - Habit Tracker',
+        home: const AppNavigator(),
+        debugShowCheckedModeBanner: false,
       ),
     );
   }
@@ -67,40 +82,70 @@ class AppNavigator extends StatefulWidget {
 
 class _AppNavigatorState extends State<AppNavigator> {
   bool _isChecking = true;
-  bool _hasAccount = false;
+  bool _hasSeenOnboarding = false;
+  bool? _hasOnboardingData;
+  bool _isCheckingOnboarding = false;
 
   @override
   void initState() {
     super.initState();
-    _checkAccountStatus();
+    _checkOnboardingStatus();
   }
 
-  Future<void> _checkAccountStatus() async {
+  Future<void> _checkOnboardingStatus() async {
     final prefs = await SharedPreferences.getInstance();
-    final hasAccount = prefs.getBool('hasAccount') ?? false;
+    final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
+
+    if (!mounted) return;
+    setState(() {
+      _hasSeenOnboarding = hasSeenOnboarding;
+      _isChecking = false;
+    });
+  }
+
+  Future<void> _checkUserOnboardingData(AuthProvider authProvider) async {
+    if (_isCheckingOnboarding || _hasOnboardingData != null) return;
 
     setState(() {
-      _hasAccount = hasAccount;
-      _isChecking = false;
+      _isCheckingOnboarding = true;
+    });
+
+    final hasData = await authProvider.checkUserHasOnboardingData();
+
+    if (!mounted) return;
+    setState(() {
+      _hasOnboardingData = hasData;
+      _isCheckingOnboarding = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    print('\n🔄 AppNavigator.build() called');
+    print('  - _isChecking: $_isChecking');
+    print('  - _hasSeenOnboarding: $_hasSeenOnboarding');
+
     if (_isChecking) {
+      print('  → Showing loading (checking onboarding status)');
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final authProvider = provider.Provider.of<AuthProvider>(context);
     final authStatus = authProvider.status;
 
-    // App Start Logic
-    if (!_hasAccount) {
+    print('  - authStatus: $authStatus');
+    print('  - authMethod: ${authProvider.authMethod}');
+    print('  - isNewUser: ${authProvider.isNewUser}');
+    print('  - userId: ${authProvider.userId}');
+
+    if (!_hasSeenOnboarding) {
+      print('  → Showing OnboardingScreen (not seen before)');
       return OnboardingScreen(onCompleted: _completeOnboarding);
     }
 
-    // Always show Auth Choice if not authenticated
-    if (authStatus != AuthStatus.authenticated) {
+    if (authStatus == AuthStatus.unauthenticated ||
+        authStatus == AuthStatus.loading) {
+      print('  → Showing AuthChoiceScreen (not authenticated)');
       return AuthChoiceScreen(
         onEmailAuth: _showEmailAuth,
         onAppleAuth: _signInWithApple,
@@ -109,75 +154,95 @@ class _AppNavigatorState extends State<AppNavigator> {
       );
     }
 
-    // User is authenticated - handle navigation
+    print('  → Calling _handleAuthenticatedUser');
     return _handleAuthenticatedUser(authProvider);
   }
 
   Widget _handleAuthenticatedUser(AuthProvider authProvider) {
-    // For guest users - go to welcome screen
+    print('\n🔍 _handleAuthenticatedUser called');
+    print('  - authMethod: ${authProvider.authMethod}');
+    print('  - isNewUser: ${authProvider.isNewUser}');
+    print('  - _hasOnboardingData (cached): $_hasOnboardingData');
+
     if (authProvider.authMethod == AuthMethod.guest) {
-      return WelcomeIntroScreen(onComplete: _navigateToDashboard);
+      print('  → Guest user: showing WelcomeIntroScreen');
+      return WelcomeIntroScreen(onComplete: _navigateToGoalSetup);
     }
 
-    // For email login - go directly to dashboard
     if (authProvider.authMethod == AuthMethod.email &&
-        !authProvider.isNewUser!) {
-      return const DashboardScreen();
+        authProvider.isNewUser == true) {
+      print('  → New email user: showing WelcomeIntroScreen');
+      return WelcomeIntroScreen(onComplete: _navigateToGoalSetup);
     }
 
-    // For OAuth users - try to check data, but on error go to auth choice
-    return FutureBuilder<bool>(
-      future: _checkUserData(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+    if (authProvider.authMethod == AuthMethod.email) {
+      print(
+        '  → Email user (isNewUser=${authProvider.isNewUser}): checking onboarding data...',
+      );
 
-        // If there's an error or no data, go back to auth choice
-        if (snapshot.hasError || !(snapshot.data ?? false)) {
-          print('Error or no user data, returning to auth choice');
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _goToAuthChoice();
-          });
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+      if (_hasOnboardingData == null && !_isCheckingOnboarding) {
+        print('  → First time checking, triggering database query...');
+        _checkUserOnboardingData(authProvider);
+      }
 
-        // Has data - go to dashboard
+      if (_hasOnboardingData == null) {
+        print('  → Showing loading (checking data)');
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+
+      if (_hasOnboardingData == true) {
+        print('  → Has onboarding data: showing Dashboard');
         return const DashboardScreen();
-      },
+      } else {
+        print('  → No onboarding data: showing WelcomeIntroScreen');
+        return WelcomeIntroScreen(onComplete: _navigateToGoalSetup);
+      }
+    }
+
+    if (authProvider.authMethod == AuthMethod.apple ||
+        authProvider.authMethod == AuthMethod.google) {
+      print('  → OAuth user: checking onboarding data...');
+
+      if (_hasOnboardingData == null && !_isCheckingOnboarding) {
+        print('  → First time checking, triggering database query...');
+        _checkUserOnboardingData(authProvider);
+      }
+
+      if (_hasOnboardingData == null) {
+        print('  → Showing loading (checking data)');
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+
+      if (_hasOnboardingData == true) {
+        print('  → Has onboarding data: showing Dashboard');
+        return const DashboardScreen();
+      } else {
+        print('  → No onboarding data: showing WelcomeIntroScreen');
+        return WelcomeIntroScreen(onComplete: _navigateToGoalSetup);
+      }
+    }
+
+    print('  ⚠️ Fallback: showing AuthChoiceScreen (authMethod unknown)');
+    return AuthChoiceScreen(
+      onEmailAuth: _showEmailAuth,
+      onAppleAuth: _signInWithApple,
+      onGoogleAuth: _signInWithGoogle,
+      onGuestContinue: _continueAsGuest,
     );
   }
-
-  void _goToAuthChoice() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => AuthChoiceScreen(
-          onEmailAuth: _showEmailAuth,
-          onAppleAuth: _signInWithApple,
-          onGoogleAuth: _signInWithGoogle,
-          onGuestContinue: _continueAsGuest,
-        ),
-      ),
-      (route) => false,
-    );
-  }
-
-  // MARK: - Navigation Methods
 
   Future<void> _completeOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('hasAccount', true);
+    await prefs.setBool('hasSeenOnboarding', true);
 
+    if (!mounted) return;
     setState(() {
-      _hasAccount = true;
+      _hasSeenOnboarding = true;
     });
   }
 
   void _showEmailAuth() {
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => SignUpScreen(
@@ -189,6 +254,7 @@ class _AppNavigatorState extends State<AppNavigator> {
   }
 
   void _showLogin() {
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => LogInScreen(
@@ -201,9 +267,6 @@ class _AppNavigatorState extends State<AppNavigator> {
   }
 
   Future<void> _signInWithApple() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('hasAccount', true);
-
     final authProvider = provider.Provider.of<AuthProvider>(
       context,
       listen: false,
@@ -212,9 +275,6 @@ class _AppNavigatorState extends State<AppNavigator> {
   }
 
   Future<void> _signInWithGoogle() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('hasAccount', true);
-
     final authProvider = provider.Provider.of<AuthProvider>(
       context,
       listen: false,
@@ -223,56 +283,106 @@ class _AppNavigatorState extends State<AppNavigator> {
   }
 
   Future<void> _continueAsGuest() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('hasAccount', true);
-
-    await provider.Provider.of<AuthProvider>(
+    final authProvider = provider.Provider.of<AuthProvider>(
       context,
       listen: false,
-    ).continueAsGuest();
-
-    // Navigate to welcome screen for guest users
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) =>
-            WelcomeIntroScreen(onComplete: _navigateToDashboard),
-      ),
-      (route) => false,
     );
+    await authProvider.continueAsGuest();
   }
 
-  // MARK: - Success Handlers
-
   Future<void> _onSignUpSuccess() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('hasAccount', true);
+    print('🎯 _onSignUpSuccess called');
+    print('  - mounted: $mounted');
 
-    // New user - go to welcome screen
+    if (!mounted) {
+      print('  ⚠️ Widget not mounted, returning');
+      return;
+    }
+
+    final authProvider = provider.Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    );
+    print('  - Auth status: ${authProvider.status}');
+    print('  - Auth method: ${authProvider.authMethod}');
+    print('  - Is new user: ${authProvider.isNewUser}');
+    print('  - User ID: ${authProvider.userId}');
+
+    _hasOnboardingData = null;
+
+    print('  - Clearing navigation stack...');
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) =>
-            WelcomeIntroScreen(onComplete: _navigateToDashboard),
-      ),
+      MaterialPageRoute(builder: (context) => const AppNavigator()),
       (route) => false,
     );
+    print('  ✅ Navigation cleared, AppNavigator will rebuild');
   }
 
   Future<void> _onLoginSuccess() async {
-    // Existing user - go directly to dashboard
+    print('🎯 _onLoginSuccess called');
+    print('  - mounted: $mounted');
+
+    if (!mounted) {
+      print('  ⚠️ Widget not mounted, returning');
+      return;
+    }
+
+    final authProvider = provider.Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    );
+    print('  - Auth status: ${authProvider.status}');
+    print('  - Auth method: ${authProvider.authMethod}');
+    print('  - Is new user: ${authProvider.isNewUser}');
+    print('  - User ID: ${authProvider.userId}');
+
+    _hasOnboardingData = null;
+
+    print('  - Clearing navigation stack...');
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      MaterialPageRoute(builder: (context) => const AppNavigator()),
       (route) => false,
     );
+    print('  ✅ Navigation cleared, AppNavigator will rebuild');
   }
 
-  void _navigateToDashboard() {
+  void _navigateToGoalSetup() {
+    print('\n🎯 _navigateToGoalSetup called');
+    print('  - mounted: $mounted');
+
+    if (!mounted) {
+      print('  ⚠️ Widget not mounted, returning');
+      return;
+    }
+
+    print('  - Navigating to Goal Setup Screen...');
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => GoalSetupScreen(onComplete: _onGoalSetupComplete),
+      ),
+      (route) => false,
+    );
+    print('  ✅ Navigation to Goal Setup complete');
+  }
+
+  void _onGoalSetupComplete() {
+    print('\n🎉 _onGoalSetupComplete called');
+    print('  - Goal setup completed, navigating to Dashboard');
+
+    if (!mounted) {
+      print('  ⚠️ Widget not mounted, returning');
+      return;
+    }
+
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const DashboardScreen()),
       (route) => false,
     );
+    print('  ✅ Navigated to Dashboard');
   }
 
   void _showForgotPassword() {
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -288,18 +398,5 @@ class _AppNavigatorState extends State<AppNavigator> {
         ],
       ),
     );
-  }
-
-  Future<bool> _checkUserData() async {
-    try {
-      final authProvider = provider.Provider.of<AuthProvider>(
-        context,
-        listen: false,
-      );
-      return await authProvider.checkUserHasData();
-    } catch (e) {
-      print('Error checking user data: $e');
-      return false; // Return false on error to trigger auth choice
-    }
   }
 }

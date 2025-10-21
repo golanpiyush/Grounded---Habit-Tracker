@@ -1,7 +1,7 @@
 // theme_provider.dart
 import 'package:flutter/material.dart';
-import 'package:grounded/providers/theme_provider.dart';
-import 'package:grounded/theme/app_colors.dart';
+import 'package:Grounded/providers/theme_provider.dart';
+import 'package:Grounded/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {

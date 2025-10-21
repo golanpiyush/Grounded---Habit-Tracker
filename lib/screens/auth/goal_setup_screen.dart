@@ -2,9 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grounded/models/onboarding_data.dart';
-import 'package:grounded/theme/app_colors.dart';
-import 'package:grounded/theme/app_text_styles.dart';
+import 'package:Grounded/models/onboarding_data.dart';
+import 'package:Grounded/theme/app_colors.dart';
+import 'package:Grounded/theme/app_text_styles.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_button.dart';
 import 'substance_selection_screen.dart';

@@ -1,0 +1,22 @@
+App Start
+├─ Has Seen Onboarding? (SharedPreferences)
+│  ├─ NO → Onboarding Screen
+│  │       └─ Complete → Auth Choice Screen
+│  └─ YES → Auth Choice Screen
+│
+└─ Auth Choice Screen
+   ├─ Email Sign Up
+   │  └─ Success → Welcome Screen → Goal Setup Screen
+   │
+   ├─ Email Login
+   │  └─ Success → Check user_onboarding table
+   │     ├─ Has Data → Dashboard
+   │     └─ No Data → Welcome Screen → Goal Setup Screen
+   │
+   ├─ Apple/Google Sign In
+   │  └─ Success → Check user_onboarding table
+   │     ├─ Has Data (existing user) → Dashboard
+   │     └─ No Data (new user) → Welcome Screen → Goal Setup Screen
+   │
+   └─ Guest Continue
+      └─ Welcome Screen → Goal Setup Screen

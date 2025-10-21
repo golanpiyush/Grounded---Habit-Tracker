@@ -1,15 +1,15 @@
 // Add Entry Screen
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:grounded/providers/theme_provider.dart';
+import 'package:Grounded/providers/theme_provider.dart';
 import 'package:shimmer/shimmer.dart'; // Add to pubspec.yaml: shimmer: ^3.0.0
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:grounded/providers/userDB.dart';
-import 'package:grounded/theme/app_colors.dart';
-import 'package:grounded/theme/app_text_styles.dart';
-import 'package:grounded/utils/emoji_assets.dart';
+import 'package:Grounded/providers/userDB.dart';
+import 'package:Grounded/theme/app_colors.dart';
+import 'package:Grounded/theme/app_text_styles.dart';
+import 'package:Grounded/utils/emoji_assets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -30,6 +30,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
   int _currentStep = 0;
   List<String> _userSubstances = [];
   bool _isLoading = true;
+  int _moodAfter = 5;
   List<String> _additionalSubstancesToday =
       []; // Track additional substances used today
 
@@ -543,6 +544,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
       }
 
       // Prepare entry data
+      // In _saveEntry method, update the entryData map:
       final entryData = {
         'user_id': userId,
         'timestamp': DateTime.now().toIso8601String(),
@@ -559,11 +561,17 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
         'context': _selectedContext,
         'social_context': _selectedSocial,
         'mood_rating': _moodBefore,
+        'mood_after': _selectedDayType == 'used'
+            ? _moodAfter
+            : null, // Add this
         'craving_level': _cravingLevel,
-        'triggers_experienced': _selectedTriggers.isEmpty
-            ? null
-            : _selectedTriggers,
-        'notes': _notesController.text.isEmpty ? null : _notesController.text,
+        'triggers_experienced':
+            _selectedDayType == 'used' && _selectedTriggers.isNotEmpty
+            ? _selectedTriggers
+            : null,
+        'notes': _selectedDayType == 'used' && _notesController.text.isNotEmpty
+            ? _notesController.text
+            : null,
       };
 
       // Save primary entry to database
@@ -976,7 +984,9 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
             ),
             const SizedBox(width: 8),
             Text(
-              '(optional)',
+              _selectedDayType == 'reduced'
+                  ? '(slide to reduce from typical)'
+                  : '(optional)',
               style: AppTextStyles.caption(
                 context,
               ).copyWith(color: textSecondary),
@@ -984,83 +994,150 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
           ],
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: TextField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: textColor),
-                decoration: InputDecoration(
-                  hintText: 'e.g., 2',
-                  hintStyle: TextStyle(color: textSecondary),
-                  filled: true,
-                  fillColor: cardColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: borderColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primaryGreen),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+
+        // Show slider for "reduced" if typical amount exists
+        if (_selectedDayType == 'reduced' && _amountController.text.isNotEmpty)
+          _buildReducedAmountSlider(themeMode)
+        else
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _amountController,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: textColor),
+                  decoration: InputDecoration(
+                    hintText: 'e.g., 2',
+                    hintStyle: TextStyle(color: textSecondary),
+                    filled: true,
+                    fillColor: cardColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _selectedUnit,
-                dropdownColor: cardColor,
-                style: TextStyle(color: textColor),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: cardColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: borderColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primaryGreen),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                ),
-                items: _getUnitOptions().entries.map((entry) {
-                  return DropdownMenuItem(
-                    value: entry.key,
-                    child: Text(
-                      entry.value,
-                      style: AppTextStyles.bodySmall(
-                        context,
-                      ).copyWith(color: textColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedUnit,
+                  dropdownColor: cardColor,
+                  style: TextStyle(color: textColor),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: cardColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
                     ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _selectedUnit = value);
-                  }
-                },
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primaryGreen,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                  ),
+                  items: _getUnitOptions().entries.map((entry) {
+                    return DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(
+                        entry.value,
+                        style: AppTextStyles.bodySmall(
+                          context,
+                        ).copyWith(color: textColor),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedUnit = value);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildReducedAmountSlider(AppThemeMode themeMode) {
+    final textColor = AppColors.getTextPrimaryColor(themeMode);
+    final textSecondary = AppColors.getTextSecondaryColor(themeMode);
+
+    final typicalAmount = double.tryParse(_amountController.text) ?? 5.0;
+    final currentAmount =
+        double.tryParse(_amountController.text) ?? typicalAmount;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Typical: ${typicalAmount.toStringAsFixed(0)} $_selectedUnit',
+              style: AppTextStyles.caption(
+                context,
+              ).copyWith(color: textSecondary),
+            ),
+            Text(
+              'Today: ${currentAmount.toStringAsFixed(1)} $_selectedUnit',
+              style: AppTextStyles.bodyMedium(context).copyWith(
+                color: AppColors.accentOrange,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 8),
+        Slider(
+          value: currentAmount,
+          min: 0,
+          max: typicalAmount,
+          divisions: (typicalAmount * 2).toInt(),
+          activeColor: AppColors.accentOrange,
+          onChanged: (value) {
+            HapticFeedback.selectionClick();
+            setState(() {
+              _amountController.text = value.toStringAsFixed(1);
+            });
+          },
+        ),
+        Text(
+          currentAmount < typicalAmount
+              ? '📉 ${((1 - currentAmount / typicalAmount) * 100).toStringAsFixed(0)}% reduction from typical'
+              : '✅ At typical amount',
+          style: AppTextStyles.caption(context).copyWith(
+            color: currentAmount < typicalAmount
+                ? AppColors.successGreen
+                : textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -1234,9 +1311,14 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
   }
 
   // Smart Mood Slider with Average Indicator
-  Widget _buildSmartMoodSlider(AppThemeMode themeMode) {
+  Widget _buildSmartMoodSlider(
+    AppThemeMode themeMode, {
+    String label = 'Mood before',
+    bool isMoodAfter = false,
+  }) {
     final textColor = AppColors.getTextPrimaryColor(themeMode);
     final textSecondary = AppColors.getTextSecondaryColor(themeMode);
+    final currentMood = isMoodAfter ? _moodAfter : _moodBefore;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1247,12 +1329,12 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
             Row(
               children: [
                 Text(
-                  'Mood before',
+                  label,
                   style: AppTextStyles.bodyMedium(
                     context,
                   ).copyWith(fontWeight: FontWeight.w600, color: textColor),
                 ),
-                if (_averageMood != null) ...[
+                if (_averageMood != null && !isMoodAfter) ...[
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -1285,7 +1367,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
               ],
             ),
             Text(
-              '$_moodBefore/10',
+              '$currentMood/10',
               style: AppTextStyles.bodyMedium(context).copyWith(
                 color: AppColors.primaryGreen,
                 fontWeight: FontWeight.w600,
@@ -1296,17 +1378,23 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
         Stack(
           children: [
             Slider(
-              value: _moodBefore.toDouble(),
+              value: currentMood.toDouble(),
               min: 1,
               max: 10,
               divisions: 9,
               activeColor: AppColors.primaryGreen,
               onChanged: (value) {
                 HapticFeedback.selectionClick();
-                setState(() => _moodBefore = value.toInt());
+                setState(() {
+                  if (isMoodAfter) {
+                    _moodAfter = value.toInt();
+                  } else {
+                    _moodBefore = value.toInt();
+                  }
+                });
               },
             ),
-            if (_averageMood != null)
+            if (_averageMood != null && !isMoodAfter)
               Positioned(
                 left:
                     ((_averageMood! - 1) / 9) *
@@ -1320,88 +1408,13 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
               ),
           ],
         ),
-        if (_averageMood != null)
+        if (_averageMood != null && !isMoodAfter)
           Text(
             'Your average mood: $_averageMood/10',
             style: AppTextStyles.caption(
               context,
             ).copyWith(color: textSecondary),
           ),
-      ],
-    );
-  }
-
-  // Smart Craving Slider
-  Widget _buildSmartCravingSlider(AppThemeMode themeMode) {
-    final textColor = AppColors.getTextPrimaryColor(themeMode);
-    final textSecondary = AppColors.getTextSecondaryColor(themeMode);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Craving level',
-                  style: AppTextStyles.bodyMedium(
-                    context,
-                  ).copyWith(fontWeight: FontWeight.w600, color: textColor),
-                ),
-                if (_averageCraving != null) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentOrange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.analytics,
-                          size: 10,
-                          color: AppColors.accentOrange,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Avg: $_averageCraving',
-                          style: AppTextStyles.caption(context).copyWith(
-                            fontSize: 10,
-                            color: AppColors.accentOrange,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            Text(
-              '$_cravingLevel/10',
-              style: AppTextStyles.bodyMedium(context).copyWith(
-                color: AppColors.accentOrange,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        Slider(
-          value: _cravingLevel.toDouble(),
-          min: 1,
-          max: 10,
-          divisions: 9,
-          activeColor: AppColors.accentOrange,
-          onChanged: (value) {
-            HapticFeedback.selectionClick();
-            setState(() => _cravingLevel = value.toInt());
-          },
-        ),
       ],
     );
   }
@@ -2254,6 +2267,103 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
     );
   }
 
+  Widget _buildSmartCravingSlider(AppThemeMode themeMode) {
+    final textColor = AppColors.getTextPrimaryColor(themeMode);
+    final textSecondary = AppColors.getTextSecondaryColor(themeMode);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Craving level',
+                  style: AppTextStyles.bodyMedium(
+                    context,
+                  ).copyWith(fontWeight: FontWeight.w600, color: textColor),
+                ),
+                if (_averageCraving != null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOrange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.analytics,
+                          size: 10,
+                          color: AppColors.accentOrange,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Avg: $_averageCraving',
+                          style: AppTextStyles.caption(context).copyWith(
+                            fontSize: 10,
+                            color: AppColors.accentOrange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            Text(
+              '$_cravingLevel/10',
+              style: AppTextStyles.bodyMedium(context).copyWith(
+                color: AppColors.accentOrange,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        Stack(
+          children: [
+            Slider(
+              value: _cravingLevel.toDouble(),
+              min: 1,
+              max: 10,
+              divisions: 9,
+              activeColor: AppColors.accentOrange,
+              onChanged: (value) {
+                HapticFeedback.selectionClick();
+                setState(() => _cravingLevel = value.toInt());
+              },
+            ),
+            if (_averageCraving != null)
+              Positioned(
+                left:
+                    ((_averageCraving! - 1) / 9) *
+                    (MediaQuery.of(context).size.width - 80),
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 2,
+                  color: AppColors.accentOrange.withOpacity(0.3),
+                ),
+              ),
+          ],
+        ),
+        if (_averageCraving != null)
+          Text(
+            'Your average craving: $_averageCraving/10',
+            style: AppTextStyles.caption(
+              context,
+            ).copyWith(color: textSecondary),
+          ),
+      ],
+    );
+  }
+
   // Updated Optional Details with insights
   Widget _buildOptionalDetailsWithInsights(AppThemeMode themeMode) {
     final textColor = AppColors.getTextPrimaryColor(themeMode);
@@ -2305,15 +2415,27 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
 
         const SizedBox(height: 24),
 
+        // Mood & Cravings - Show for both "used" and "reduced"
         _buildExpandableSection(
           themeMode,
-          title: 'Mood & Cravings',
+          title: _selectedDayType == 'used'
+              ? 'Mood & Cravings (Before & After)'
+              : 'Mood & Cravings',
           hasSmartData: _averageMood != null || _averageCraving != null,
           child: Column(
             children: [
-              _buildSmartMoodSlider(themeMode),
+              _buildSmartMoodSlider(themeMode, label: 'Mood before'),
               const SizedBox(height: 16),
               _buildSmartCravingSlider(themeMode),
+              // Add "Mood after" for "used" day type
+              if (_selectedDayType == 'used') ...[
+                const SizedBox(height: 16),
+                _buildSmartMoodSlider(
+                  themeMode,
+                  label: 'Mood after',
+                  isMoodAfter: true,
+                ),
+              ],
             ],
           ),
         ),
@@ -2333,19 +2455,22 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
         ),
         const SizedBox(height: 16),
 
-        _buildExpandableSection(
-          themeMode,
-          title: 'Triggers & Notes',
-          hasSmartData: _suggestedTriggers.isNotEmpty,
-          child: Column(
-            children: [
-              _buildSmartTriggersSelector(themeMode),
-              const SizedBox(height: 16),
-              _buildNotesInput(themeMode),
-            ],
+        // Only show Triggers & Notes for "used" day type
+        if (_selectedDayType == 'used')
+          _buildExpandableSection(
+            themeMode,
+            title: 'Triggers & Notes',
+            hasSmartData: _suggestedTriggers.isNotEmpty,
+            child: Column(
+              children: [
+                _buildSmartTriggersSelector(themeMode),
+                const SizedBox(height: 16),
+                _buildNotesInput(themeMode),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
+
+        if (_selectedDayType == 'used') const SizedBox(height: 16),
 
         if (_selectedDayType != 'mindful')
           _buildExpandableSection(
@@ -2364,6 +2489,25 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen>
       case 0:
         return _buildQuickCheckIn(themeMode);
       case 1:
+        // Skip optional details for mindful days
+        if (_selectedDayType == 'mindful') {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '✨ Mindful Day',
+                style: AppTextStyles.headlineSmall(context),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Great choice! No additional details needed for mindful days.',
+                style: AppTextStyles.bodyMedium(
+                  context,
+                ).copyWith(color: AppColors.getTextSecondaryColor(themeMode)),
+              ),
+            ],
+          );
+        }
         return _buildOptionalDetailsWithInsights(themeMode);
       default:
         return Container();

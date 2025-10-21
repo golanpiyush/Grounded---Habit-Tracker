@@ -1,4 +1,4 @@
-import 'package:grounded/models/userdailyentrymodel.dart';
+import 'package:Grounded/models/userdailyentrymodel.dart';
 
 class WeeklyData {
   final String day;

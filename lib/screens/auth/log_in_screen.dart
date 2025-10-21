@@ -1,7 +1,7 @@
 // log_in_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:grounded/providers/userDB.dart';
+import 'package:Grounded/providers/userDB.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../utils/validators.dart';

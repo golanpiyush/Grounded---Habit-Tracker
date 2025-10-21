@@ -1,8 +1,8 @@
 // safety_setup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:grounded/models/onboarding_data.dart';
-import 'package:grounded/screens/auth/app_preferences_screen.dart';
+import 'package:Grounded/models/onboarding_data.dart';
+import 'package:Grounded/screens/auth/app_preferences_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_button.dart';

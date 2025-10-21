@@ -1,7 +1,7 @@
 // onboarding_page_2.dart
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'package:grounded/theme/app_text_styles.dart';
+import 'package:Grounded/theme/app_text_styles.dart';
 
 class OnboardingPage2 extends StatefulWidget {
   const OnboardingPage2({Key? key}) : super(key: key);

@@ -2,8 +2,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:grounded/models/onboarding_data.dart';
-import 'package:grounded/screens/auth/usage_patterns_screen.dart';
+import 'package:Grounded/models/onboarding_data.dart';
+import 'package:Grounded/screens/auth/usage_patterns_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/custom_button.dart';
 

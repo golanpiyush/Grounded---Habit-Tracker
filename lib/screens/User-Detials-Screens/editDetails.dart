@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:grounded/theme/app_colors.dart';
-import 'package:grounded/theme/app_text_styles.dart';
-import 'package:grounded/providers/theme_provider.dart';
-import 'package:grounded/utils/emoji_assets.dart';
+import 'package:Grounded/theme/app_colors.dart';
+import 'package:Grounded/theme/app_text_styles.dart';
+import 'package:Grounded/providers/theme_provider.dart';
+import 'package:Grounded/utils/emoji_assets.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 

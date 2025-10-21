@@ -1,7 +1,7 @@
 // app_colors.dart
 
 import 'package:flutter/material.dart';
-import 'package:grounded/providers/theme_provider.dart';
+import 'package:Grounded/providers/theme_provider.dart';
 
 class AppColors {
   // Primary Colors
