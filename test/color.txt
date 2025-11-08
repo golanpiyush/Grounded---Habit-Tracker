@@ -1,1 +1,838 @@
 const Color(0xFF2D5016);
+
+
+📱 Screen-by-Screen Edit Checklist
+
+SCREEN 1: Home Dashboard
+🎯 Priority Edits
+1. Top Stats Cards - COMPLETE REDESIGN
+REMOVE:
+❌ "1 Day Streak" (demotivating when it resets)
+❌ "2 This Month" (vague - 2 what?)
+```
+
+**REPLACE WITH:**
+```
+✅ Card 1: "7 Mindful Days"
+   Subtitle: "This week"
+   Icon: ✨ (sparkle)
+
+✅ Card 2: "15 Mindful Days"  
+   Subtitle: "This month"
+   Icon: 🌱 (growth)
+
+✅ Card 3: "60% Reduction"
+   Subtitle: "vs. last month"
+   Icon: 📉 (trending down)
+
+✅ Card 4: "$45 Saved"
+   Subtitle: "This month"
+   Icon: 💰 (money bag)
+```
+
+**2. Add Goal Progress Banner (NEW)**
+
+**INSERT BELOW STATS CARDS:**
+```
+╔══════════════════════════════════╗
+║  🎯 Your Goal                    ║
+║  Reduce to 3x/week               ║
+║  ████████░░ 80% complete         ║
+║  8 days left until Dec 1         ║
+╚══════════════════════════════════╝
+```
+
+**3. Today's Check-in Section**
+
+**CURRENT:**
+```
+"No check-in yet"
+✏️ Tap to check in
+```
+
+**CHANGE TO:**
+```
+"No check-in yet"
+💬 "How are you feeling today?" [Tap to reflect]
+
++ Add motivational message that rotates:
+"Every day is a chance to learn about yourself 🌱"
+"Progress isn't linear, and that's okay 💚"
+"You're building awareness one day at a time ✨"
+```
+
+**4. Weekly Overview Chart**
+
+**CURRENT:** Just green bars
+**ADD:**
+- **Tap interaction:** Tap any bar → show details
+```
+  "Wednesday, Oct 28"
+  - 1 check-in (Reduced use)
+  - Mood: 6/10 → 7/10
+  - Context: Home, alone
+```
+
+- **Color coding:**
+```
+  🟢 Green = Mindful day (no use)
+  🟡 Yellow = Reduced use
+  🟠 Orange = Used (moderate)
+  🔴 Red = Heavy use
+```
+
+- **Add legend below chart:**
+```
+  🟢 Mindful  🟡 Reduced  🟠 Used
+```
+
+**5. Add Quick Access Buttons (NEW)**
+
+**INSERT ABOVE "Add Entry" BUTTON:**
+```
+[📊 View Insights] [📝 Journal] [🆘 Crisis Help]
+(Small icon buttons in a row)
+```
+
+---
+
+## **SCREEN 2: Today's Check-in Modal**
+
+### 🎯 Priority Edits
+
+**1. Header Section**
+
+**CURRENT:**
+```
+"Today's Check-in"
+Thursday, Oct 30
+```
+
+**ADD MOTIVATIONAL MESSAGE:**
+```
+"Today's Check-in"
+Thursday, Oct 30
+💬 "Checking in helps you understand your patterns"
+```
+
+**2. Feeling Options**
+
+**CURRENT:** Great, Good, Okay, Struggling
+
+**IMPROVE COPY:**
+```
+😊 Great → "Feeling strong"
+😌 Good → "Doing well"  
+😐 Okay → "Getting by"
+😔 Struggling → "Having a hard time"
+```
+
+**ADD:** If "Struggling" selected:
+```
+[Show compassionate message]
+"That's okay. Some days are harder. 
+Would you like to try a grounding exercise?"
+[Yes, help me] [Not now]
+```
+
+**3. "How was your day?" Section**
+
+**CURRENT:** Mindful Day, Reduced Use, Used
+
+**ADD DESCRIPTIONS:**
+```
+✨ Mindful Day
+"No use today - feeling present"
+
+📉 Reduced Use  
+"Used less than usual"
+
+📊 Used
+"Regular use today"
+```
+
+**4. Add Quick Journal Prompt (NEW)**
+
+**INSERT BEFORE "Save Check-in":**
+```
+╔══════════════════════════════════╗
+║  Quick reflection (optional)     ║
+║  ┌────────────────────────────┐  ║
+║  │ What's on your mind?       │  ║
+║  │ [Text input, 200 chars]    │  ║
+║  └────────────────────────────┘  ║
+║  "This helps you process..."     ║
+╚══════════════════════════════════╝
+```
+
+**5. Button Improvements**
+
+**CURRENT:** Cancel | Save Check-in
+
+**CHANGE TO:**
+```
+[Cancel]  [Skip for now]  [Save ✓]
+(Give users option to skip without feeling guilty)
+```
+
+---
+
+## **SCREEN 3: Settings**
+
+### 🎯 Priority Edits
+
+**1. Recovery Settings Section**
+
+**CURRENT:**
+```
+💊 Substances: 2 substances
+🎯 Goals: Reduce usage
+📅 Target Date: Custom (81 days) (73 days left)
+```
+
+**IMPROVEMENTS:**
+
+**Substances - ADD PREVIEW:**
+```
+💊 Substances
+   Cannabis, Tobacco (2 active)
+   [Arrow →]
+```
+
+**Goals - ADD MORE DETAIL:**
+```
+🎯 Goals
+   Reduce to 3x/week
+   Currently: 0.4x/week (You're doing great! ✨)
+   [Arrow →]
+```
+
+**Target Date - CLARIFY:**
+```
+📅 Milestone Date
+   Dec 1, 2024 (73 days left)
+   "Check in on your progress"
+   [Arrow →]
+```
+
+**2. Add New Section: "Insights & Progress" (NEW)**
+
+**INSERT AFTER RECOVERY SETTINGS:**
+```
+╔══════════════════════════════════╗
+║  Insights & Progress             ║
+║                                  ║
+║  📊 View Patterns                ║
+║     See your trends & insights   ║
+║                                  ║
+║  📈 Progress Report              ║
+║     Your journey so far          ║
+║                                  ║
+║  📥 Export Data                  ║
+║     Share with therapist (PDF)   ║
+╚══════════════════════════════════╝
+```
+
+**3. App Preferences Improvements**
+
+**Daily Reminders - ADD TIME:**
+```
+🔔 Daily Reminders [Toggle ON]
+    "Check in at 8:00 PM"
+    [Tap to change time]
+```
+
+**Motivational Messages - ADD PREVIEW:**
+```
+✨ Motivational Messages [Toggle ON]
+    "Get encouragement throughout the day"
+```
+
+**Analytics - CLARIFY:**
+```
+📊 Anonymous Analytics [Toggle ON]
+    "Help improve Grounded (no personal data shared)"
+```
+
+**4. Add New Section: "Privacy & Security" (NEW)**
+
+**INSERT AFTER APP PREFERENCES:**
+```
+╔══════════════════════════════════╗
+║  Privacy & Security              ║
+║                                  ║
+║  🔒 App Lock                     ║
+║     Require PIN/biometric        ║
+║                                  ║
+║  🔐 Encrypted Backup             ║
+║     Secure cloud sync            ║
+║                                  ║
+║  🗑️ Delete All Data              ║
+║     Permanently erase everything ║
+╚══════════════════════════════════╝
+```
+
+**5. Add "Account" Section Details**
+
+**ADD BELOW ACCOUNT:**
+```
+╔══════════════════════════════════╗
+║  Account                         ║
+║                                  ║
+║  👤 Piyush Golan                 ║
+║     golanpiyushsexy@gmail.com    ║
+║                                  ║
+║  💳 Subscription                 ║
+║     Free plan (Upgrade →)        ║
+║                                  ║
+║  ℹ️ About                        ║
+║     Version 1.0.0                ║
+║     Privacy Policy | Terms       ║
+║                                  ║
+║  🆘 Crisis Resources             ║
+║     Get help now                 ║
+╚══════════════════════════════════╝
+```
+
+---
+
+## **SCREEN 4: Edit Substances**
+
+### 🎯 Priority Edits
+
+**1. Top Info Banner**
+
+**CURRENT:**
+```
+ℹ️ "2 substances selected • Tap primary star to change main substance"
+```
+
+**IMPROVE CLARITY:**
+```
+ℹ️ "Select substances you want to track
+    ⭐ Tap star to set as primary (shows in quick check-in)"
+```
+
+**2. Substance Cards - Add Risk Indicators**
+
+**ADD COLOR CODING:**
+```
+🟢 Lower Risk:
+   - Caffeine
+   - Cannabis (in moderation)
+
+🟡 Moderate Risk:
+   - Tobacco
+   - Alcohol
+   - Prescription (as directed)
+   - Vaping
+
+🔴 Higher Risk:
+   - Cocaine
+   - Heroin
+   - Fentanyl
+   - Methamphetamine
+```
+
+**VISUAL CHANGE:**
+```
+Instead of just colored backgrounds,
+ADD risk badge:
+
+╔════════════════════╗
+║ 🚬 Tobacco        ║  ← Brown background
+║ ⚠️ Moderate risk  ║  ← NEW badge
+║ ⭐ Primary ✓      ║
+╚════════════════════╝
+```
+
+**3. Add Harm Reduction Tips (NEW)**
+
+**WHEN USER SELECTS A SUBSTANCE:**
+```
+[Bottom sheet slides up]
+
+╔════════════════════════════════╗
+║  Cocaine selected              ║
+║                                ║
+║  ⚠️ High Risk Substance        ║
+║                                ║
+║  Harm Reduction Tips:          ║
+║  • Never use alone             ║
+║  • Start with small amounts    ║
+║  • Have naloxone available     ║
+║  • Test your substances        ║
+║  • Wait 2+ hours between uses  ║
+║                                ║
+║  🆘 Crisis Resources →         ║
+║                                ║
+║  [Got it]  [Don't show again]  ║
+╚════════════════════════════════╝
+```
+
+**4. Add "Custom Substance" Option (NEW)**
+
+**ADD AT BOTTOM OF LIST:**
+```
+╔════════════════════╗
+║ ➕ Add Custom      ║
+║ Create your own    ║
+╚════════════════════╝
+
+[When tapped]
+"Custom Substance Name:"
+[Text input]
+"Risk level:" [Low/Moderate/High]
+[Save] [Cancel]
+```
+
+**5. Add Dangerous Combinations Warning (NEW)**
+
+**IF USER SELECTS RISKY COMBO:**
+```
+[Alert appears]
+
+⚠️ Warning
+
+You've selected substances that can be 
+dangerous when combined:
+- Alcohol + Prescription drugs
+- Cocaine + Alcohol
+- [etc.]
+
+Please be extremely careful and consider
+talking to a healthcare provider.
+
+[I Understand]  [Learn More]
+```
+
+---
+
+## **SCREEN 5: Add Entry - Quick Check-in**
+
+### 🎯 Priority Edits
+
+**1. Header - Add Context**
+
+**CURRENT:**
+```
+Add Entry
+Night • 4:36 AM
+```
+
+**FIX TIME PERIOD + ADD ICON:**
+```
+Add Entry
+🌙 Early Morning • 4:36 AM
+(4-6am = Early Morning, not Night)
+
+Time periods:
+🌅 5am-11am = Morning
+☀️ 11am-5pm = Afternoon  
+🌆 5pm-9pm = Evening
+🌙 9pm-5am = Night
+```
+
+**2. Progress Indicator**
+
+**CURRENT:** Just green bar
+
+**ADD TEXT:**
+```
+Step 1 of 2: Quick check-in
+[█████████░] 90%
+```
+
+**3. "How did it go today?" Options**
+
+**CURRENT:** ✨ Mindful, 📉 Reduced, 📊 Used
+
+**ADD TOOLTIPS (Long press):**
+```
+✨ Mindful
+[Long press shows:]
+"No use today. Building awareness and making mindful choices."
+
+📉 Reduced  
+"Used less than your usual amount or frequency."
+
+📊 Used
+"Regular use today. No judgment - tracking helps you understand patterns."
+```
+
+**4. Primary Substance Section**
+
+**CURRENT:** Just shows Cannabis
+
+**ADD INFO:**
+```
+Primary substance
+🍃 Cannabis (Tap to change)
+
+[If tapped]
+→ Quick picker shows all selected substances:
+[Cannabis] [Tobacco] [+ Add more]
+```
+
+**5. Amount Field Improvement**
+
+**CURRENT:** "Amount (optional)"
+
+**MAKE IT USEFUL:**
+```
+Amount (optional)
+[Dropdown with suggestions based on substance]
+
+For Cannabis:
+- 0.5g  
+- 1g
+- 2g
+- Custom: [___]
+
+For Alcohol:
+- 1 drink
+- 2-3 drinks  
+- 4+ drinks
+- Custom: [___]
+```
+
+**6. Add "Save for Later" Option (NEW)**
+
+**CURRENT:** Only [Continue] button
+
+**ADD:**
+```
+[Save as Draft]  [Continue →]
+
+(Lets users save incomplete entries and finish later)
+```
+
+---
+
+## **SCREEN 6: Add Entry - Detailed Entry**
+
+### 🎯 Priority Edits
+
+**1. Progress Indicator**
+
+**ADD:**
+```
+Step 2 of 2: Add details
+[██████████] 100%
+```
+
+**2. Mood & Cravings Section Improvements**
+
+**CURRENT:** Just sliders with values
+
+**ADD INTERPRETATIONS:**
+```
+Mood before: 5/10
+[Slider]
+💡 "Your average before: 4/10"
+   "This is higher than usual - nice!"
+
+Craving level: 5/10
+[Slider]  
+💡 "Moderate craving"
+   "Try a grounding exercise? [Start]"
+
+Mood after: 5/10
+[Slider]
+💡 "Track this over time"
+   "Pattern: Your mood typically drops by 1pt after use"
+```
+
+**3. Context Section - Add More Options**
+
+**CURRENT:** Where? Who with?
+
+**ADD "WHEN?":**
+```
+When?
+[Morning] [Afternoon] [Evening] [Night]
+[After work] [Before bed] [Waking up]
+```
+
+**ADD "WHY?" (CRITICAL FOR INSIGHTS):**
+```
+What triggered this? (optional)
+[Stress] [Boredom] [Social pressure]
+[Habit] [Celebrating] [Pain/discomfort]  
+[Felt like it] [Other]
+```
+
+**4. Who With - Add "Alone" Option**
+
+**CURRENT:** Alone, Friends, Partner, Group
+
+**IMPROVE:**
+```
+Who with?
+[😊 Alone - preferred] vs [😔 Alone - isolated]
+[👥 Friends] [💑 Partner] [👨‍👩‍👧‍👦 Family]
+[🎉 Group/party] [👔 Coworkers]
+```
+
+**5. Add "How Long?" Field (NEW)**
+
+**INSERT AFTER "WHO WITH?":**
+```
+How long?
+[Quick (< 30 min)] [1-2 hours]  
+[3-4 hours] [All day/night]
+```
+
+**6. Add "Notes" Section (NEW)**
+
+**INSERT BEFORE BUTTONS:**
+```
+╔══════════════════════════════════╗
+║  Personal notes (optional)       ║
+║  ┌────────────────────────────┐  ║
+║  │ Anything else to track?    │  ║
+║  │ [Text area, 500 chars]     │  ║
+║  └────────────────────────────┘  ║
+║  "Private - only you can see"    ║
+╚══════════════════════════════════╝
+```
+
+**7. Bottom Buttons Improvement**
+
+**CURRENT:** [Back] [Skip] [Save Entry]
+
+**CHANGE TO:**
+```
+[← Back]  [Skip Details]  [Save ✓]
+
+Add confirmation message:
+"Entry saved! 🌱 You're building self-awareness."
+```
+
+**8. Add "Quick Entry" Shortcut (NEW)**
+
+**TOP-RIGHT CORNER:**
+```
+[⚡ Quick Save]
+(Saves with current values immediately,
+skips to confirmation)
+```
+
+---
+
+## **NEW SCREENS YOU NEED TO BUILD**
+
+### **SCREEN 7: Pattern Insights (NEW)**
+```
+╔════════════════════════════════════╗
+║  📊 Your Patterns                  ║
+║  Last 30 days                      ║
+║                                    ║
+║  🔥 Usage Trends                   ║
+║  15 days tracked this month        ║
+║  60% reduction vs. last month      ║
+║  [View chart]                      ║
+║                                    ║
+║  ⏰ Time Patterns                  ║
+║  You tend to use most:             ║
+║  • Fridays at 8-10 PM (60%)        ║
+║  • After stressful workdays (45%)  ║
+║  [View details]                    ║
+║                                    ║
+║  😊 Mood Patterns                  ║
+║  • Mood drops 1.5pts after use     ║
+║  • Highest mood on mindful days    ║
+║  • Cravings peak at 8 PM           ║
+║  [View chart]                      ║
+║                                    ║
+║  💰 Cost Impact                    ║
+║  Spent: $120 this month            ║
+║  Saved: $45 vs. last month         ║
+║  Yearly projection: $540 savings   ║
+║                                    ║
+║  🎯 Next Steps                     ║
+║  Based on your patterns:           ║
+║  • Try grounding exercises at 8 PM ║
+║  • Plan Friday alternatives        ║
+║  • Track stress levels daily       ║
+╚════════════════════════════════════╝
+```
+
+---
+
+### **SCREEN 8: Crisis Resources (NEW)**
+```
+╔════════════════════════════════════╗
+║  🆘 Get Help Now                   ║
+║                                    ║
+║  If you're in crisis:              ║
+║                                    ║
+║  📞 SAMHSA National Helpline       ║
+║  1-800-662-4357 (24/7)             ║
+║  [Call Now]                        ║
+║                                    ║
+║  💬 Crisis Text Line               ║
+║  Text HOME to 741741               ║
+║  [Open Messages]                   ║
+║                                    ║
+║  🏥 Find Treatment                 ║
+║  [Search nearby facilities]        ║
+║                                    ║
+║  👥 Support Groups                 ║
+║  • Narcotics Anonymous             ║
+║  • SMART Recovery                  ║
+║  • Refuge Recovery                 ║
+║  [Find meetings]                   ║
+║                                    ║
+║  🧘 Grounding Exercises            ║
+║  Quick techniques to manage now:   ║
+║  • 4-7-8 Breathing [Start]         ║
+║  • 5-4-3-2-1 Senses [Start]        ║
+║  • Body Scan [Start]               ║
+║                                    ║
+║  📱 Emergency Contact              ║
+║  [Set trusted person to call]      ║
+╚════════════════════════════════════╝
+```
+
+---
+
+### **SCREEN 9: Grounding Exercise (NEW)**
+```
+╔════════════════════════════════════╗
+║  🧘 4-7-8 Breathing                ║
+║                                    ║
+║  This technique helps calm         ║
+║  cravings and anxiety.             ║
+║                                    ║
+║  [Start Exercise]                  ║
+║                                    ║
+║  ╔══════════════════════════════╗  ║
+║  ║                              ║  ║
+║  ║     [Animated circle]        ║  ║
+║  ║                              ║  ║
+║  ║     Breathe in...            ║  ║
+║  ║     Count: 4                 ║  ║
+║  ║                              ║  ║
+║  ╚══════════════════════════════╝  ║
+║                                    ║
+║  Round 1 of 4                      ║
+║  [■■■□] 75%                        ║
+║                                    ║
+║  [Pause]  [End Session]            ║
+║                                    ║
+║  After completion:                 ║
+║  "How do you feel now?"            ║
+║  😊 Better  😐 Same  😔 Worse      ║
+╚════════════════════════════════════╝
+```
+
+---
+
+### **SCREEN 10: Export Report (NEW)**
+```
+╔════════════════════════════════════╗
+║  📥 Export Your Data               ║
+║                                    ║
+║  Share with therapist or           ║
+║  keep for your records             ║
+║                                    ║
+║  Date range:                       ║
+║  [Last 30 days ▼]                  ║
+║                                    ║
+║  Include:                          ║
+║  ✓ Usage summary                   ║
+║  ✓ Mood trends                     ║
+║  ✓ Pattern insights                ║
+║  ✓ Cost analysis                   ║
+║  □ Raw data (CSV)                  ║
+║  □ Personal notes                  ║
+║                                    ║
+║  Format:                           ║
+║  ○ PDF Report (recommended)        ║
+║  ○ CSV Spreadsheet                 ║
+║                                    ║
+║  [Preview] [Export & Share]        ║
+║                                    ║
+║  🔒 Your data stays private        ║
+║  We never see what you export      ║
+╚════════════════════════════════════╝
+```
+
+---
+
+## 🎨 **GLOBAL UI/UX IMPROVEMENTS**
+
+### **Apply to ALL Screens:**
+
+**1. Add Persistent Help Button**
+```
+Every screen: [?] icon in top-right
+Tapping shows contextual help/tips
+```
+
+**2. Add Back Navigation Confirmation**
+```
+If user has unsaved changes:
+"You have unsaved changes. Discard?"
+[Keep Editing] [Discard]
+```
+
+**3. Loading States**
+```
+When saving/loading data:
+[Animated leaf/plant growing]
+"Saving your reflection..."
+```
+
+**4. Success Animations**
+```
+After saving entry:
+[Confetti/sparkle animation]
+"Entry saved! 🌱"
+[Dismiss after 2 seconds]
+```
+
+**5. Empty States**
+```
+If no data yet:
+Instead of blank space, show:
+"No data yet! Start by logging your first check-in."
+[+ Add Entry]
+```
+
+**6. Offline Mode Indicator**
+```
+If no internet:
+[Yellow banner at top]
+"⚠️ Offline - your data is safe and will sync later"
+
+🐛 CRITICAL BUGS TO FIX
+
+Screen 1: "1 Day Streak" but chart shows 7 days green - INCONSISTENT
+Screen 4: Says "2 substances selected" but only Tobacco visible - CONFUSING
+Screen 5: Time shows "Night • 4:36 AM" - WRONG (should be Early Morning)
+Screen 6: "Avg. 4" label on mood slider appears randomly - UNCLEAR PURPOSE
+
+
+📋 IMPLEMENTATION PRIORITY
+Week 1 (Critical):
+
+ Screen 1: Redesign stat cards
+ Screen 2: Add journal prompt
+ Screen 5 & 6: Add trigger tracking
+ Build Screen 8: Crisis resources
+
+Week 2 (Important):
+
+ Screen 1: Add goal progress
+ Screen 3: Add export option
+ Screen 4: Add harm reduction tips
+ Build Screen 9: Grounding exercises
+
+Week 3 (Nice-to-have):
+
+ Build Screen 7: Pattern insights
+ Build Screen 10: Export reports
+ Add all global UI improvements
+ Polish animations/transitions

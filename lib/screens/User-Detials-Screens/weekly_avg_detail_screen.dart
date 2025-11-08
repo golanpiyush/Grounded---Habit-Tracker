@@ -1,3 +1,4 @@
+import 'package:Grounded/providers/stats_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,30 +28,20 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
   late AnimationController _numberController;
   late Animation<double> _numberAnimation;
 
-  final UserDatabaseService _dbService = UserDatabaseService();
-  List<Map<String, dynamic>>? _weeklyHistory;
-  bool _isLoadingHistory = true;
-  double _calculatedAverage = 0.0;
-  double _improvement = 0.0;
-  double _bestWeek = 0.0;
-
   @override
   void initState() {
     super.initState();
 
-    // Fade in animation
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
 
-    // Bar chart animation
     _barController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
 
-    // Number counting animation
     _numberController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -64,7 +55,6 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
           ),
         );
 
-    // Start animations in sequence
     _fadeController.forward();
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) {
@@ -73,156 +63,12 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
       }
     });
 
-    // Fetch real data
-    _loadWeeklyData();
-  }
-
-  Future<void> _loadWeeklyData() async {
-    final userId = _dbService.currentUser?.id;
-    if (userId == null) {
-      setState(() {
-        _isLoadingHistory = false;
-      });
-      return;
-    }
-
-    try {
-      // Get user creation date
-      final userProfile = await _dbService.getUserProfile(userId);
-      final userCreatedAt = userProfile?['created_at'] != null
-          ? DateTime.parse(userProfile!['created_at'] as String)
-          : DateTime.now().subtract(const Duration(days: 365));
-
-      // Calculate number of weeks since user joined
-      final now = DateTime.now();
-      final weeksSinceJoined = now.difference(userCreatedAt).inDays ~/ 7;
-      final weeksToShow = (weeksSinceJoined + 1).clamp(
-        1,
-        5,
-      ); // Show max 5 weeks
-
-      // Calculate data for weeks
-      final List<Map<String, dynamic>> weeklyData = [];
-
-      for (int i = 0; i < weeksToShow; i++) {
-        // Calculate week start (Monday)
-        final currentWeekStart = now.subtract(Duration(days: now.weekday - 1));
-        final weekStart = currentWeekStart.subtract(Duration(days: i * 7));
-        final weekEnd = weekStart.add(
-          const Duration(days: 6, hours: 23, minutes: 59),
-        );
-
-        // Don't show weeks before user joined
-        if (weekStart.isBefore(userCreatedAt)) {
-          continue;
-        }
-
-        final logs = await _dbService.getLogsForRange(
-          userId,
-          weekStart,
-          weekEnd,
-        );
-
-        // Count MINDFUL days (days WITHOUT substance use)
-        int mindfulDays = 0;
-        final Map<String, bool> dayMap = {};
-
-        // Initialize all days in the week as mindful
-        for (int j = 0; j < 7; j++) {
-          final day = weekStart.add(Duration(days: j));
-          final dayKey =
-              '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
-
-          // Only count days that have passed and are after user joined
-          if (day.isBefore(now) && day.isAfter(userCreatedAt)) {
-            dayMap[dayKey] = true; // Start as mindful
-          }
-        }
-
-        // Mark days with substance use as NOT mindful
-        for (var log in logs) {
-          final logDate = DateTime.parse(log['timestamp'] as String);
-          final dayKey =
-              '${logDate.year}-${logDate.month.toString().padLeft(2, '0')}-${logDate.day.toString().padLeft(2, '0')}';
-
-          final dayType = log['day_type'] as String?;
-
-          // If day_type is 'used', mark as NOT mindful
-          if (dayType == 'used') {
-            dayMap[dayKey] = false;
-          }
-        }
-
-        // Count mindful days
-        mindfulDays = dayMap.values.where((isMindful) => isMindful).length;
-        final totalDaysInWeek = dayMap.length;
-        final average = totalDaysInWeek > 0
-            ? (mindfulDays / 7.0) *
-                  7.0 // Calculate as days per week
-            : 0.0;
-
-        weeklyData.add({
-          'week': i == 0
-              ? 'This Week'
-              : i == 1
-              ? 'Last Week'
-              : '$i Weeks Ago',
-          'average': double.parse(average.toStringAsFixed(1)),
-          'total': mindfulDays,
-          'weekStart': weekStart,
-        });
-      }
-
-      // Calculate improvement (comparing this week to last week)
-      if (weeklyData.length >= 2) {
-        final thisWeek = weeklyData[0]['average'] as double;
-        final lastWeek = weeklyData[1]['average'] as double;
-
-        if (lastWeek > 0) {
-          // Positive improvement = more mindful days this week
-          _improvement = ((thisWeek - lastWeek) / 7.0 * 100);
-        } else if (thisWeek > 0) {
-          _improvement = 100.0; // First week improvement
-        }
-      }
-
-      // Find best week (highest average)
-      _bestWeek = weeklyData.isNotEmpty
-          ? weeklyData
-                .map((w) => w['average'] as double)
-                .reduce((a, b) => a > b ? a : b)
-          : 0.0;
-
-      // Current average is this week's average
-      _calculatedAverage = weeklyData.isNotEmpty
-          ? (weeklyData[0]['average'] as double)
-          : 0.0;
-
-      // Update animation with real data
-      _numberAnimation = Tween<double>(begin: 0.0, end: _calculatedAverage)
-          .animate(
-            CurvedAnimation(
-              parent: _numberController,
-              curve: Curves.easeOutCubic,
-            ),
-          );
-
-      setState(() {
-        _weeklyHistory = weeklyData;
-        _isLoadingHistory = false;
-      });
-
-      print('📊 Weekly Data Loaded:');
-      print('  - Weeks shown: ${weeklyData.length}');
-      print('  - Current average: $_calculatedAverage');
-      print('  - Improvement: $_improvement%');
-      print('  - Best week: $_bestWeek');
-    } catch (e) {
-      print('Error loading weekly data: $e');
-      setState(() {
-        _isLoadingHistory = false;
-      });
-    }
+    // Load data using provider
+    Future.microtask(() {
+      ref
+          .read(weeklyStatsProvider.notifier)
+          .loadWeeklyData(widget.weeklyAverage);
+    });
   }
 
   @override
@@ -289,6 +135,8 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(themeProvider);
+
+    final weeklyState = ref.watch(weeklyStatsProvider);
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -327,9 +175,9 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildWeeklyHeader(screenWidth, theme),
+                _buildWeeklyHeader(screenWidth, theme, weeklyState),
                 SizedBox(height: screenWidth > 400 ? 32 : 24),
-                _buildWeeklyStats(screenWidth, theme),
+                _buildWeeklyStats(screenWidth, theme, weeklyState),
                 SizedBox(height: screenWidth > 400 ? 32 : 24),
                 Text(
                   'Weekly Trends',
@@ -339,9 +187,9 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
                   ),
                 ),
                 const SizedBox(height: 16),
-                _isLoadingHistory
+                weeklyState.isLoading
                     ? _buildChartShimmer(screenWidth, theme)
-                    : _buildWeeklyChart(screenWidth, theme),
+                    : _buildWeeklyChart(screenWidth, theme, weeklyState),
                 SizedBox(height: screenWidth > 400 ? 32 : 24),
                 Text(
                   'Weekly History',
@@ -351,9 +199,9 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
                   ),
                 ),
                 const SizedBox(height: 16),
-                _isLoadingHistory
+                weeklyState.isLoading
                     ? _buildHistoryShimmer(screenWidth, theme)
-                    : _buildWeeklyHistoryList(screenWidth, theme),
+                    : _buildWeeklyHistoryList(screenWidth, theme, weeklyState),
                 const SizedBox(height: 24),
               ],
             ),
@@ -363,16 +211,18 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
     );
   }
 
-  Widget _buildWeeklyHeader(double screenWidth, AppThemeMode theme) {
+  Widget _buildWeeklyHeader(
+    double screenWidth,
+    AppThemeMode theme,
+    WeeklyStats state,
+  ) {
     final isSmallScreen = screenWidth < 360;
     final padding = screenWidth > 400 ? 24.0 : (isSmallScreen ? 16.0 : 20.0);
     final iconSize = screenWidth > 400 ? 80.0 : (isSmallScreen ? 60.0 : 70.0);
     final fontSize = screenWidth > 400 ? 56.0 : (isSmallScreen ? 44.0 : 48.0);
-
-    // Use calculated average if available
-    final displayAverage = _isLoadingHistory
+    final displayAverage = state.isLoading
         ? widget.weeklyAverage
-        : _calculatedAverage;
+        : state.weeklyAverage;
 
     return Container(
       width: double.infinity,
@@ -432,9 +282,9 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            _improvement > 0
+            state.improvement > 0
                 ? 'Your weekly average is improving'
-                : _improvement < 0
+                : state.improvement < 0
                 ? 'Keep pushing forward'
                 : 'Starting your journey',
             style: AppTextStyles.bodySmall(
@@ -447,16 +297,20 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
     );
   }
 
-  Widget _buildWeeklyStats(double screenWidth, AppThemeMode theme) {
+  Widget _buildWeeklyStats(
+    double screenWidth,
+    AppThemeMode theme,
+    WeeklyStats state,
+  ) {
     final spacing = screenWidth > 400 ? 12.0 : 8.0;
 
-    // Format improvement value
-    final improvementValue = _improvement.abs();
-    final improvementText = _improvement > 0
-        ? '+${improvementValue.toStringAsFixed(0)}%'
-        : _improvement < 0
-        ? '${improvementValue.toStringAsFixed(0)}%'
-        : '0%';
+    // Format improvement as +/- days instead of percentage
+    final improvementValue = state.improvement.abs();
+    final improvementText = state.improvement > 0
+        ? '+${improvementValue.toStringAsFixed(0)}'
+        : state.improvement < 0
+        ? '-${improvementValue.toStringAsFixed(0)}'
+        : '0';
 
     return Row(
       children: [
@@ -464,10 +318,10 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
           child: _buildStatBox(
             emoji: EmojiAssets.chartUp,
             value: improvementText,
-            label: _improvement >= 0 ? 'Improvement' : 'Change',
-            color: _improvement > 0
+            label: 'Days Change', // Changed from 'Improvement'
+            color: state.improvement > 0
                 ? AppColors.successGreen
-                : _improvement < 0
+                : state.improvement < 0
                 ? AppColors.accentOrange
                 : AppColors.textSecondary,
             screenWidth: screenWidth,
@@ -478,7 +332,9 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
         Expanded(
           child: _buildStatBox(
             emoji: EmojiAssets.target,
-            value: _bestWeek > 0 ? _bestWeek.toStringAsFixed(1) : '0.0',
+            value: state.bestWeek > 0
+                ? state.bestWeek.toStringAsFixed(1)
+                : '0.0',
             label: 'Best Week',
             color: const Color(0xFFA855F7),
             screenWidth: screenWidth,
@@ -673,16 +529,20 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
     );
   }
 
-  Widget _buildWeeklyChart(double screenWidth, AppThemeMode theme) {
+  Widget _buildWeeklyChart(
+    double screenWidth,
+    AppThemeMode theme,
+    WeeklyStats state,
+  ) {
     final isSmallScreen = screenWidth < 360;
     final padding = screenWidth > 400 ? 20.0 : (isSmallScreen ? 14.0 : 16.0);
     final chartHeight = screenWidth > 400
         ? 200.0
         : (isSmallScreen ? 160.0 : 180.0);
-    final barHeight = chartHeight * 0.7; // Reduced from 0.8
+    final barHeight = chartHeight * 0.7;
 
     // If no data or loading, show placeholder bars
-    if (_weeklyHistory == null || _weeklyHistory!.isEmpty) {
+    if (state.weeklyHistory == null || state.weeklyHistory!.isEmpty) {
       return Container(
         padding: EdgeInsets.all(padding),
         decoration: BoxDecoration(
@@ -740,7 +600,7 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
       );
     }
 
-    final history = _weeklyHistory!;
+    final history = state.weeklyHistory!;
     final maxValue = history
         .map((w) => w['average'] as double)
         .reduce((a, b) => a > b ? a : b);
@@ -797,7 +657,7 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
                 return _buildBar(
                   height: height,
                   label: week['week'].toString().split(' ')[0],
-                  isHighlight: week['week'] == 'hey Week',
+                  isHighlight: week['week'] == 'This Week',
                   delay: index * 100,
                   screenWidth: screenWidth,
                   theme: theme,
@@ -901,13 +761,17 @@ class _WeeklyAvgDetailScreenState extends ConsumerState<WeeklyAvgDetailScreen>
     );
   }
 
-  Widget _buildWeeklyHistoryList(double screenWidth, AppThemeMode theme) {
-    if (_weeklyHistory == null || _weeklyHistory!.isEmpty) {
+  Widget _buildWeeklyHistoryList(
+    double screenWidth,
+    AppThemeMode theme,
+    WeeklyStats state,
+  ) {
+    if (state.weeklyHistory.isEmpty) {
       return _buildEmptyState(screenWidth, theme, 'No history available');
     }
 
     return Column(
-      children: _weeklyHistory!
+      children: state.weeklyHistory
           .map((week) => _buildWeekItem(week, screenWidth, theme))
           .toList(),
     );

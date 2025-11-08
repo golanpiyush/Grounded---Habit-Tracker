@@ -20,17 +20,30 @@ class WeeklyOverviewDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTheme = ref.watch(themeProvider);
-    final screenWidth = MediaQuery.of(context).size.width;
 
-    // Calculate statistics
+    // Check if we have any weekly data with actual logs
+    final hasData = weeklyData.any((d) => d.hasLog);
+
+    if (!hasData) {
+      return _buildEmptyState(context, currentTheme);
+    }
+
+    // Calculate statistics - FIXED to only count days with actual mindful logs
     final mindfulDays = weeklyData
-        .where((d) => d.dayType == DayType.mindful)
+        .where(
+          (d) => d.dayType == DayType.mindful && d.hasLog,
+        ) // ADDED: && d.hasLog
         .length;
     final reducedDays = weeklyData
         .where((d) => d.dayType == DayType.reduced)
         .length;
     final usedDays = weeklyData.where((d) => d.dayType == DayType.used).length;
-    final mindfulPercentage = ((mindfulDays / 7) * 100).round();
+
+    // Calculate total days with actual logs (not empty/missing days)
+    final totalLoggedDays = weeklyData.where((d) => d.hasLog).length; // ADDED
+    final mindfulPercentage = totalLoggedDays > 0
+        ? ((mindfulDays / totalLoggedDays) * 100).round()
+        : 0; // FIXED: Use actual logged days, not total 7
 
     return Scaffold(
       backgroundColor: AppColorsTheme.getBackground(currentTheme),
@@ -276,6 +289,131 @@ class WeeklyOverviewDetailScreen extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, AppThemeMode currentTheme) {
+    return Scaffold(
+      backgroundColor: AppColorsTheme.getBackground(currentTheme),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              // Header
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColorsTheme.getCard(currentTheme),
+                        border: Border.all(
+                          color: AppColorsTheme.getBorder(currentTheme),
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.arrow_back_ios_new,
+                        size: 18,
+                        color: AppColorsTheme.getTextPrimary(currentTheme),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Weekly Overview',
+                          style: AppTextStyles.headlineSmall(context).copyWith(
+                            fontSize: 20,
+                            color: AppColorsTheme.getTextPrimary(currentTheme),
+                          ),
+                        ),
+                        Text(
+                          'Last 7 days',
+                          style: AppTextStyles.caption(context).copyWith(
+                            color: AppColorsTheme.getTextSecondary(
+                              currentTheme,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // Empty State Content
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(EmojiAssets.chartUp, width: 80, height: 80),
+                      const SizedBox(height: 24),
+                      Text(
+                        'No Data Yet',
+                        style: AppTextStyles.headlineSmall(context).copyWith(
+                          fontSize: 24,
+                          color: AppColorsTheme.getTextPrimary(currentTheme),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Start logging your daily entries to see\nyour weekly progress and insights',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyMedium(context).copyWith(
+                          color: AppColorsTheme.getTextSecondary(currentTheme),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.primaryGreen.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.lightbulb_outline,
+                              color: AppColors.primaryGreen,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Log at least one day to view your weekly overview',
+                                style: AppTextStyles.bodySmall(context)
+                                    .copyWith(
+                                      color: AppColorsTheme.getTextSecondary(
+                                        currentTheme,
+                                      ),
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

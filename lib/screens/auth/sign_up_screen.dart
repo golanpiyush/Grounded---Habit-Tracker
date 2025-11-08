@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:Grounded/providers/userDB.dart';
-import 'package:Grounded/screens/home_screen.dart';
 import 'package:Grounded/theme/app_text_styles.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
@@ -23,22 +22,27 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _ageController = TextEditingController();
   final Map<int, bool> _hasAnimated = {};
   bool _isLoading = false;
   PasswordStrength _passwordStrength = PasswordStrength.weak;
+  String? _selectedGender;
+  bool _showAgeInfo = false;
+  bool _showGenderInfo = false;
 
   final UserDatabaseService _userService = UserDatabaseService();
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  // ignore: unused_field
   late Animation<double> _scaleAnimation;
+  late AnimationController _infoAnimationController;
 
   @override
   void initState() {
@@ -50,6 +54,11 @@ class _SignUpScreenState extends State<SignUpScreen>
   void _initializeAnimations() {
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    _infoAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
 
@@ -78,12 +87,37 @@ class _SignUpScreenState extends State<SignUpScreen>
     _animationController.forward();
   }
 
+  void _toggleAgeInfo() {
+    setState(() {
+      _showAgeInfo = !_showAgeInfo;
+    });
+    if (_showAgeInfo) {
+      _infoAnimationController.forward();
+    } else {
+      _infoAnimationController.reverse();
+    }
+  }
+
+  void _toggleGenderInfo() {
+    setState(() {
+      _showGenderInfo = !_showGenderInfo;
+    });
+    if (_showGenderInfo) {
+      _infoAnimationController.forward();
+    } else {
+      _infoAnimationController.reverse();
+    }
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _fullNameController.dispose();
+    _ageController.dispose();
     _animationController.dispose();
+    _infoAnimationController.dispose();
     super.dispose();
   }
 
@@ -154,16 +188,18 @@ class _SignUpScreenState extends State<SignUpScreen>
       final authResponse = await _userService.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        fullName: null, // You can add a name field if needed
+        fullName: _fullNameController.text.trim().isEmpty
+            ? null
+            : _fullNameController.text.trim(),
+        age: _ageController.text.trim().isEmpty
+            ? null
+            : int.tryParse(_ageController.text.trim()),
+        gender: _selectedGender,
       );
 
       if (authResponse.user != null && mounted) {
         setState(() => _isLoading = false);
-
-        // Success - navigate to next screen
         widget.onSignUpSuccess();
-
-        // Optional: Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Account created successfully!'),
@@ -174,8 +210,6 @@ class _SignUpScreenState extends State<SignUpScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-
-        // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_getErrorMessage(e)),
@@ -257,8 +291,21 @@ class _SignUpScreenState extends State<SignUpScreen>
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 40),
+                        // Animated Full Name Field (Optional)
+                        _buildAnimatedField(
+                          delay: 100,
+                          child: CustomTextField(
+                            label: 'Full Name (Optional)',
+                            hintText: 'Enter your full name',
+                            type: TextFieldType.text,
+                            controller: _fullNameController,
+                            showValidationIcon: false,
+                            textInputAction: TextInputAction.next,
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
 
                         // Animated Email Field
                         _buildAnimatedField(
@@ -275,7 +322,178 @@ class _SignUpScreenState extends State<SignUpScreen>
                         ),
 
                         const SizedBox(height: 20),
+                        _buildAnimatedField(
+                          delay: 300,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Age (Optional)',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: _toggleAgeInfo,
+                                    child: Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.info_outline,
+                                        size: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              CustomTextField(
+                                label: 'Age',
+                                hintText: 'Enter your age',
+                                type: TextFieldType.digit,
+                                controller: _ageController,
+                                showValidationIcon: false,
+                                textInputAction: TextInputAction.next,
+                              ),
+                              // Age Info Chip
+                              if (_showAgeInfo)
+                                SizeTransition(
+                                  sizeFactor: _infoAnimationController,
+                                  child: Container(
+                                    margin: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE8F5E8),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: const Color(0xFF2D5016),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.insights,
+                                          size: 16,
+                                          color: const Color(0xFF2D5016),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'We use age to provide personalized insights and recommendations',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: const Color(0xFF2D5016),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
+                        // Animated Gender Field with Info Icon
+                        _buildAnimatedField(
+                          delay: 350,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Gender (Optional)',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: _toggleGenderInfo,
+                                    child: Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.info_outline,
+                                        size: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  _buildGenderChip('Male'),
+                                  const SizedBox(width: 12),
+                                  _buildGenderChip('Female'),
+                                  const SizedBox(width: 12),
+                                  _buildGenderChip('Other'),
+                                ],
+                              ),
+                              // Gender Info Chip
+                              if (_showGenderInfo)
+                                SizeTransition(
+                                  sizeFactor: _infoAnimationController,
+                                  child: Container(
+                                    margin: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE8F5E8),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: const Color(0xFF2D5016),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.insights,
+                                          size: 16,
+                                          color: const Color(0xFF2D5016),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Gender helps us provide better insights and personalized content',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: const Color(0xFF2D5016),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
                         // Animated Password Field with Strength Indicator
                         _buildAnimatedField(
                           delay: 400,
@@ -380,7 +598,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                           ),
                         ),
 
-                        const SizedBox(height: 20),
+                        // const SizedBox(height: 20),
 
                         // Animated Confirm Password Field
                         _buildAnimatedField(
@@ -468,6 +686,37 @@ class _SignUpScreenState extends State<SignUpScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderChip(String gender) {
+    final isSelected = _selectedGender == gender;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedGender = isSelected ? null : gender;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF2D5016) : Colors.grey[100],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF2D5016) : Colors.grey[300]!,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          gender,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey[700],
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
         ),
       ),
     );

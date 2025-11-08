@@ -1,5 +1,7 @@
 // goal_setup_screen.dart
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:Grounded/models/onboarding_data.dart';
@@ -268,6 +270,105 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
     }
   }
 
+  void _handleContinue() async {
+    if (!mounted || _selectedGoals.isEmpty) return;
+
+    // Calculate timeline from date if no timeline selected but date is selected
+    final String? finalTimeline;
+    if (_selectedTimeline == null && _selectedDate != null) {
+      finalTimeline = _calculateTimelineFromDate(_selectedDate!);
+    } else {
+      finalTimeline = _selectedTimeline;
+    }
+
+    // Create OnboardingData object with goal setup data
+    final onboardingData = OnboardingData(
+      selectedGoals: _selectedGoals,
+      selectedTimeline: finalTimeline,
+      targetDate: _selectedDate,
+      motivationLevel: _motivationLevel,
+      primaryReason: _selectedReasons.isNotEmpty
+          ? _selectedReasons.first
+          : null,
+      selectedReasons: _selectedReasons,
+    );
+
+    // PRINT DATA BEFORE SAVING
+    print('=== NAVIGATING TO SUBSTANCE SELECTION ===');
+    print('Selected Goals: ${_selectedGoals.toList()}');
+    print('Timeline: $finalTimeline');
+    print('Target Date: $_selectedDate');
+    print('Motivation Level: $_motivationLevel');
+    print('Selected Reasons: ${_selectedReasons.toList()}');
+    print('Primary Reason: ${onboardingData.primaryReason}');
+    print(
+      'Days Remaining: ${_selectedDate != null ? _calculateDaysRemaining(_selectedDate!) : "N/A"}',
+    );
+    print('========================================');
+
+    // Save ALL data to SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+
+    // Goals data
+    await prefs.setStringList('user_goals', _selectedGoals.toList());
+    await prefs.setString('user_timeline', finalTimeline ?? '');
+
+    // Date data
+    if (_selectedDate != null) {
+      await prefs.setString(
+        'user_target_date',
+        _selectedDate!.toIso8601String(),
+      );
+    } else {
+      await prefs.remove('user_target_date'); // Clear if no date
+    }
+
+    // Motivation data
+    await prefs.setInt('user_motivation_level', _motivationLevel);
+
+    // Reasons data
+    await prefs.setStringList(
+      'user_selected_reasons',
+      _selectedReasons.toList(),
+    );
+    await prefs.setString(
+      'user_primary_reason',
+      onboardingData.primaryReason ?? '',
+    );
+
+    // Save the complete onboarding data as JSON for easy retrieval
+    await prefs.setString(
+      'onboarding_data',
+      jsonEncode(onboardingData.toJson()),
+    );
+
+    // Verify all data was saved
+    print('✅ ALL DATA SAVED TO SHAREDPREFERENCES:');
+    print('• Goals: ${prefs.getStringList('user_goals')}');
+    print('• Timeline: ${prefs.getString('user_timeline')}');
+    print('• Target Date: ${prefs.getString('user_target_date')}');
+    print('• Motivation Level: ${prefs.getInt('user_motivation_level')}');
+    print(
+      '• Selected Reasons: ${prefs.getStringList('user_selected_reasons')}',
+    );
+    print('• Primary Reason: ${prefs.getString('user_primary_reason')}');
+    print(
+      '• Complete Onboarding Data: ${prefs.getString('onboarding_data') != null ? "Saved" : "Not Saved"}',
+    );
+
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => SubstanceSelectionScreen(
+            onboardingData: onboardingData,
+            onContinue: widget.onComplete,
+            onSkip: widget.onComplete,
+          ),
+        ),
+      );
+    }
+  }
+
   Widget _buildGoalsPage() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -445,6 +546,7 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
           // Date Picker Section
           // In the date picker section, replace the existing content with:
           GestureDetector(
+            // In the date picker section, update the onTap handler:
             onTap: () async {
               final DateTime? picked = await showDatePicker(
                 context: context,
@@ -469,9 +571,8 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
               if (picked != null) {
                 setState(() {
                   _selectedDate = picked;
-                  _selectedTimeline = _calculateTimelineFromDate(
-                    picked,
-                  ); // Auto-calculate timeline
+                  // Auto-calculate and set timeline when date is selected
+                  _selectedTimeline = _calculateTimelineFromDate(picked);
                 });
               }
             },
@@ -1065,10 +1166,11 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
     return Colors.green;
   }
 
-  void _handleContinue() async {
-    if (!mounted || _selectedGoals.isEmpty) return;
+  // REPLACE _handleSkip method:
+  void _handleSkip() async {
+    if (!mounted) return;
 
-    // Calculate timeline from date if no timeline selected
+    // Calculate timeline from date if no timeline selected but date is selected
     final String? finalTimeline;
     if (_selectedTimeline == null && _selectedDate != null) {
       finalTimeline = _calculateTimelineFromDate(_selectedDate!);
@@ -1076,10 +1178,10 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
       finalTimeline = _selectedTimeline;
     }
 
-    // Create OnboardingData object with goal setup data
+    // Create OnboardingData with current values
     final onboardingData = OnboardingData(
       selectedGoals: _selectedGoals,
-      selectedTimeline: finalTimeline, // Use calculated timeline
+      selectedTimeline: finalTimeline,
       targetDate: _selectedDate,
       motivationLevel: _motivationLevel,
       primaryReason: _selectedReasons.isNotEmpty
@@ -1088,29 +1190,27 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
       selectedReasons: _selectedReasons,
     );
 
-    // PRINT DATA WITH CALCULATED TIMELINE
-    print('=== NAVIGATING TO SUBSTANCE SELECTION ===');
-    print('Selected Goals: ${_selectedGoals.toList()}');
-    print('Selected Timeline: $finalTimeline'); // This will show "4 months"
-    print('Selected Date: $_selectedDate');
-    print('Motivation Level: $_motivationLevel');
-    print('Selected Reasons: ${_selectedReasons.toList()}');
-    print(
-      'Calculated Timeline: ${_selectedDate != null ? _calculateTimelineFromDate(_selectedDate!) : "N/A"}',
-    );
-    print('========================================');
-
-    // Save to SharedPreferences
+    // Save ALL data to SharedPreferences (same as continue)
     final prefs = await SharedPreferences.getInstance();
+
+    // Goals data
     await prefs.setStringList('user_goals', _selectedGoals.toList());
     await prefs.setString('user_timeline', finalTimeline ?? '');
+
+    // Date data
     if (_selectedDate != null) {
       await prefs.setString(
         'user_target_date',
         _selectedDate!.toIso8601String(),
       );
+    } else {
+      await prefs.remove('user_target_date');
     }
+
+    // Motivation data
     await prefs.setInt('user_motivation_level', _motivationLevel);
+
+    // Reasons data
     await prefs.setStringList(
       'user_selected_reasons',
       _selectedReasons.toList(),
@@ -1120,54 +1220,13 @@ class _GoalSetupScreenState extends State<GoalSetupScreen>
       onboardingData.primaryReason ?? '',
     );
 
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => SubstanceSelectionScreen(
-            onboardingData: onboardingData,
-            onContinue: widget.onComplete,
-            onSkip: widget.onComplete,
-          ),
-        ),
-      );
-    }
-  }
-
-  // REPLACE _handleSkip method:
-  void _handleSkip() async {
-    if (!mounted) return;
-
-    // Create OnboardingData with default values
-    final onboardingData = OnboardingData(
-      selectedGoals: _selectedGoals, // Keep any selected goals
-      selectedTimeline: _selectedTimeline, // Keep any selected timeline
-      targetDate: _selectedDate, // Keep any selected date
-      motivationLevel: _motivationLevel, // Keep current motivation level
-      primaryReason: _selectedReasons.isNotEmpty
-          ? _selectedReasons.first
-          : null,
-      selectedReasons: _selectedReasons, // Keep any selected reasons
-    );
-
-    // Save to SharedPreferences for backup
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('user_goals', _selectedGoals.toList());
-    await prefs.setString('user_timeline', _selectedTimeline ?? '');
-    if (_selectedDate != null) {
-      await prefs.setString(
-        'user_target_date',
-        _selectedDate!.toIso8601String(),
-      );
-    }
-    await prefs.setInt('user_motivation_level', _motivationLevel);
-    await prefs.setStringList(
-      'user_selected_reasons',
-      _selectedReasons.toList(),
-    );
+    // Save complete onboarding data
     await prefs.setString(
-      'user_primary_reason',
-      onboardingData.primaryReason ?? '',
+      'onboarding_data',
+      jsonEncode(onboardingData.toJson()),
     );
+
+    print('✅ SKIP: DATA SAVED TO SHAREDPREFERENCES');
 
     if (mounted) {
       Navigator.of(context).pushReplacement(

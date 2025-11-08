@@ -1,0 +1,29 @@
+
+
+1 how often 
+	daily
+	multiple times a day
+evenings
+weekends
+ocassionally
+
+2  when do you typically use? (dynamic based on substances selected {for eg: cannabis selected}) [NO MULIPLE SELECTIONS ALLOWED]
+	alone for relaxing
+	socially
+	for creativity
+	for pain
+	before bed
+3 how user consumes? (dynamic based on substances selected)
+a) typical amount?  
+	joints, bongs, blunts, etc if  {for eg: cannabis selected}
+	beers, cans, whiskey, etc if  {for eg: alcohol selected}
+	ciggrattes, pipe bowls, cigars, etc if  {tobacco selected}
+	and all other substance based options
+
+b) HOW many of each 
+	number of joints - {if joint is selected}
+	number of cans -  {if cans is selected}
+	number of ciggrates -  {if ciggrates is selected}
+
+c) cost per use
+ 	for each subtances selected 

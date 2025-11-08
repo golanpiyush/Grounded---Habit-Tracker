@@ -1,3 +1,4 @@
+import 'package:Grounded/providers/stats_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,36 +26,15 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
   late AnimationController _numberController;
   late Animation<double> _numberAnimation;
 
-  // Data state variables
-  final _userDb = UserDatabaseService();
-  bool _isLoading = true;
-  double _totalSaved = 0.0;
-  double _dailyAverage = 0.0;
-  double _yearlyProjection = 0.0;
-  double _mindfulDaysSavings = 0.0;
-  double _reducedDaysSavings = 0.0;
-  List<Map<String, dynamic>> _dailySavings = [];
-
-  // Filter state
-  String _selectedFilter = 'All Time';
-  final List<String> _filterOptions = [
-    'This Month',
-    'Last 30 Days',
-    'Last 90 Days',
-    'All Time',
-  ];
-
   @override
   void initState() {
     super.initState();
 
-    // Fade in animation
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
 
-    // Number counting animation
     _numberController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -64,14 +44,28 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
       CurvedAnimation(parent: _numberController, curve: Curves.easeOutCubic),
     );
 
-    // Start animations in sequence
     _fadeController.forward();
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) _numberController.forward();
     });
 
-    // Load real data
-    _loadMoneySavedData();
+    // Load data using provider
+    Future.microtask(() {
+      ref.read(moneySavedStatsProvider.notifier).loadMoneySavedData();
+    });
+  }
+
+  Future<void> _refreshData() async {
+    await ref.read(moneySavedStatsProvider.notifier).loadMoneySavedData();
+  }
+
+  void _onFilterChanged(String? newValue) {
+    if (newValue != null) {
+      HapticFeedback.lightImpact();
+      ref
+          .read(moneySavedStatsProvider.notifier)
+          .loadMoneySavedData(filter: newValue);
+    }
   }
 
   @override
@@ -81,173 +75,9 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
     super.dispose();
   }
 
-  Future<void> _loadMoneySavedData() async {
-    try {
-      final userId = _userDb.currentUser?.id;
-      if (userId == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      // Get date range based on filter
-      final now = DateTime.now();
-      DateTime startDate;
-      DateTime endDate = now;
-
-      switch (_selectedFilter) {
-        case 'This Month':
-          startDate = DateTime(now.year, now.month, 1);
-          break;
-        case 'Last 30 Days':
-          startDate = now.subtract(const Duration(days: 30));
-          break;
-        case 'Last 90 Days':
-          startDate = now.subtract(const Duration(days: 90));
-          break;
-        case 'All Time':
-          // Get user creation date
-          final userProfile = await _userDb.getUserProfile(userId);
-          if (userProfile != null && userProfile['created_at'] != null) {
-            startDate = DateTime.parse(userProfile['created_at']);
-          } else {
-            startDate = now.subtract(const Duration(days: 365)); // Fallback
-          }
-          break;
-        default:
-          startDate = DateTime(now.year, now.month, 1);
-      }
-
-      // Fetch logs for the period
-      final logs = await _userDb.getLogsForRange(userId, startDate, endDate);
-
-      // Get onboarding data to know substance costs
-      final onboarding = await _userDb.getOnboardingData(userId);
-      final substancePatterns = await _userDb.getSubstancePatterns(userId);
-
-      // Calculate savings
-      double totalSaved = 0.0;
-      double mindfulSavings = 0.0;
-      double reducedSavings = 0.0;
-      double totalSpent = 0.0;
-      List<Map<String, dynamic>> dailySavingsList = [];
-
-      // Create a map of substance costs
-      Map<String, double> substanceCosts = {};
-      for (var pattern in substancePatterns) {
-        final cost = pattern['cost_per_use'];
-        if (cost != null) {
-          substanceCosts[pattern['substance_name']] = (cost as num).toDouble();
-        }
-      }
-
-      // Calculate potential daily cost (what user would spend if they used everything)
-      double potentialDailyCost = 0.0;
-      for (var cost in substanceCosts.values) {
-        potentialDailyCost += cost;
-      }
-
-      // Process logs by date
-      Map<String, Map<String, dynamic>> logsByDate = {};
-      for (var log in logs) {
-        final timestamp = DateTime.parse(log['timestamp']);
-        final dateKey = '${timestamp.year}-${timestamp.month}-${timestamp.day}';
-        logsByDate[dateKey] = log;
-      }
-
-      // Calculate for each day in range
-      for (
-        DateTime date = startDate;
-        date.isBefore(endDate.add(const Duration(days: 1))) &&
-            date.isBefore(now.add(const Duration(days: 1)));
-        date = date.add(const Duration(days: 1))
-      ) {
-        final dateKey = '${date.year}-${date.month}-${date.day}';
-        double daySavings = 0.0;
-        String dayType = 'mindful'; // Default
-
-        if (logsByDate.containsKey(dateKey)) {
-          final log = logsByDate[dateKey]!;
-          final dayTypeFromLog = log['day_type'] as String?;
-          final costSpent = (log['cost_spent'] as num?)?.toDouble() ?? 0.0;
-
-          if (dayTypeFromLog == 'used') {
-            // Used day - negative savings (actual spending)
-            dayType = 'used';
-            daySavings = -costSpent; // Negative because money was spent
-            totalSpent += costSpent;
-          } else if (dayTypeFromLog == 'reduced') {
-            // Reduced day - saved some money
-            dayType = 'reduced';
-            daySavings = potentialDailyCost - costSpent;
-            reducedSavings += daySavings;
-            totalSpent += costSpent;
-          } else {
-            // Mindful day - saved all money
-            dayType = 'mindful';
-            daySavings = potentialDailyCost;
-            mindfulSavings += daySavings;
-          }
-        } else if (date.isBefore(now)) {
-          // No log for past date - assume mindful
-          dayType = 'mindful';
-          daySavings = potentialDailyCost;
-          mindfulSavings += daySavings;
-        }
-
-        totalSaved += daySavings;
-
-        // Add to daily savings list (only last 30 for display)
-        if (dailySavingsList.length < 30) {
-          dailySavingsList.insert(0, {
-            'date': '${_getMonthAbbr(date.month)} ${date.day}',
-            'day': _getDayLabel(date, now),
-            'saved': daySavings,
-            'type': dayType,
-          });
-        }
-      }
-
-      // Calculate daily average
-      final daysInPeriod = endDate.difference(startDate).inDays + 1;
-      final daysCounted = daysInPeriod > now.difference(startDate).inDays + 1
-          ? now.difference(startDate).inDays + 1
-          : daysInPeriod;
-      final dailyAvg = daysCounted > 0 ? totalSaved / daysCounted : 0.0;
-
-      // Project yearly savings
-      final yearlyProj = dailyAvg * 365;
-
-      if (mounted) {
-        setState(() {
-          _totalSaved = totalSaved;
-          _dailyAverage = dailyAvg;
-          _yearlyProjection = yearlyProj;
-          _mindfulDaysSavings = mindfulSavings;
-          _reducedDaysSavings = reducedSavings;
-          _dailySavings = dailySavingsList;
-          _isLoading = false;
-        });
-
-        // Update animation with real total
-        _numberAnimation = Tween<double>(begin: 0, end: _totalSaved).animate(
-          CurvedAnimation(
-            parent: _numberController,
-            curve: Curves.easeOutCubic,
-          ),
-        );
-        _numberController.reset();
-        _numberController.forward();
-      }
-    } catch (e) {
-      print('Error loading money saved data: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  String _getSubtitleText() {
-    switch (_selectedFilter) {
+  String _getSubtitleText(MoneySavedStats state) {
+    final filter = state.selectedFilter;
+    switch (filter) {
       case 'This Month':
         return 'This month\'s savings';
       case 'Last 30 Days':
@@ -302,6 +132,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
+    final statsState = ref.watch(moneySavedStatsProvider);
     final isDark = themeMode != AppThemeMode.light;
     final isAmoled = themeMode == AppThemeMode.amoled;
 
@@ -348,6 +179,16 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
             context,
           ).copyWith(color: textPrimary),
         ),
+        actions: [
+          // Add refresh button
+          IconButton(
+            icon: Icon(Icons.refresh, color: textPrimary),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              _refreshData();
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: FadeTransition(
@@ -369,14 +210,20 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
                         cardColor,
                         textPrimary,
                         textSecondary,
+                        statsState,
                       ),
                     ),
                   ],
                 ),
                 SizedBox(height: screenWidth > 400 ? 16 : 12),
-                _buildFilterDropdown(cardColor, textPrimary, textSecondary),
+                _buildFilterDropdown(
+                  cardColor,
+                  textPrimary,
+                  textSecondary,
+                  statsState,
+                ),
                 SizedBox(height: screenWidth > 400 ? 32 : 24),
-                _isLoading
+                statsState.isLoading
                     ? _buildStatsShimmer(
                         screenWidth,
                         shimmerBaseColor,
@@ -387,9 +234,10 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
                         cardColor,
                         textPrimary,
                         textSecondary,
+                        statsState,
                       ),
                 SizedBox(height: screenWidth > 400 ? 32 : 24),
-                _isLoading
+                statsState.isLoading
                     ? _buildBreakdownShimmer(
                         screenWidth,
                         shimmerBaseColor,
@@ -400,26 +248,27 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
                         cardColor,
                         textPrimary,
                         textSecondary,
+                        statsState,
                       ),
                 SizedBox(height: screenWidth > 400 ? 32 : 24),
                 Text(
-                  'Daily Savings',
+                  'Your Journey',
                   style: AppTextStyles.headlineSmall(context).copyWith(
                     fontSize: screenWidth > 400 ? 18 : 16,
                     color: textPrimary,
                   ),
                 ),
                 const SizedBox(height: 16),
-                _isLoading
+                statsState.isLoading
                     ? _buildDailySavingsShimmer(
                         screenWidth,
                         shimmerBaseColor,
                         shimmerHighlightColor,
                       )
-                    : _dailySavings.isEmpty
+                    : statsState.dailySavings.isEmpty
                     ? _buildEmptyState(textSecondary)
                     : Column(
-                        children: _dailySavings
+                        children: statsState.dailySavings
                             .asMap()
                             .entries
                             .map(
@@ -447,6 +296,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
     Color cardColor,
     Color textPrimary,
     Color textSecondary,
+    MoneySavedStats state,
   ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -456,7 +306,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
         borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButton<String>(
-        value: _selectedFilter,
+        value: state.selectedFilter,
         isExpanded: true,
         underline: const SizedBox(),
         icon: Icon(Icons.keyboard_arrow_down, color: textPrimary),
@@ -464,19 +314,12 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
         style: AppTextStyles.bodyMedium(
           context,
         ).copyWith(color: textPrimary, fontWeight: FontWeight.w600),
-        items: _filterOptions.map((String value) {
+        items: ['This Month', 'Last 30 Days', 'Last 90 Days', 'All Time'].map((
+          String value,
+        ) {
           return DropdownMenuItem<String>(value: value, child: Text(value));
         }).toList(),
-        onChanged: (String? newValue) {
-          if (newValue != null && newValue != _selectedFilter) {
-            HapticFeedback.lightImpact();
-            setState(() {
-              _selectedFilter = newValue;
-              _isLoading = true;
-            });
-            _loadMoneySavedData();
-          }
-        },
+        onChanged: _onFilterChanged,
       ),
     );
   }
@@ -486,6 +329,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
     Color cardColor,
     Color textPrimary,
     Color textSecondary,
+    MoneySavedStats state,
   ) {
     final isSmallScreen = screenWidth < 360;
     final padding = screenWidth > 400 ? 24.0 : (isSmallScreen ? 16.0 : 20.0);
@@ -551,7 +395,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            _getSubtitleText(),
+            _getSubtitleText(state),
             style: AppTextStyles.bodySmall(
               context,
             ).copyWith(color: textSecondary),
@@ -567,6 +411,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
     Color cardColor,
     Color textPrimary,
     Color textSecondary,
+    MoneySavedStats state,
   ) {
     final spacing = screenWidth > 400 ? 12.0 : 8.0;
 
@@ -577,8 +422,9 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
             opacity: _fadeController,
             child: _buildStatBox(
               emoji: EmojiAssets.chartUp,
-              value: '\$${_dailyAverage.toStringAsFixed(2)}',
-              label: 'Daily Average',
+              value:
+                  '\$${state.dailyAverage.toStringAsFixed(0)}', // Remove decimals
+              label: 'Save Per Day',
               color: const Color(0xFF3B82F6),
               screenWidth: screenWidth,
               cardColor: cardColor,
@@ -593,8 +439,8 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
             opacity: _fadeController,
             child: _buildStatBox(
               emoji: EmojiAssets.target,
-              value: '\$${_yearlyProjection.toInt()}',
-              label: 'Yearly Goal',
+              value: '\$${state.yearlyProjection.toInt()}',
+              label: 'Yearly Potential',
               color: const Color(0xFFA855F7),
               screenWidth: screenWidth,
               cardColor: cardColor,
@@ -682,6 +528,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
     Color cardColor,
     Color textPrimary,
     Color textSecondary,
+    MoneySavedStats state,
   ) {
     final isSmallScreen = screenWidth < 360;
     final padding = screenWidth > 400 ? 20.0 : (isSmallScreen ? 14.0 : 16.0);
@@ -707,7 +554,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Savings Breakdown',
+            'Actual Savings',
             style: AppTextStyles.bodyLarge(
               context,
             ).copyWith(fontWeight: FontWeight.w600, color: textPrimary),
@@ -716,7 +563,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
           _buildBreakdownItem(
             emoji: EmojiAssets.checkmark,
             label: 'Mindful Days',
-            amount: _mindfulDaysSavings,
+            amount: state.mindfulDaysSavings,
             color: AppColors.successGreen,
             screenWidth: screenWidth,
             textPrimary: textPrimary,
@@ -725,7 +572,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
           _buildBreakdownItem(
             emoji: EmojiAssets.target,
             label: 'Reduced Days',
-            amount: _reducedDaysSavings,
+            amount: state.reducedDaysSavings,
             color: AppColors.accentOrange,
             screenWidth: screenWidth,
             textPrimary: textPrimary,
@@ -739,7 +586,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
               Flexible(
                 flex: 3,
                 child: Text(
-                  'Total This Month',
+                  'Total Saved',
                   style: AppTextStyles.bodyLarge(
                     context,
                   ).copyWith(fontWeight: FontWeight.w700, color: textPrimary),
@@ -754,7 +601,7 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerRight,
                   child: Text(
-                    '\$${_totalSaved.toInt()}',
+                    '\$${state.totalSaved.toInt()}',
                     style: TextStyle(
                       fontSize: totalFontSize,
                       fontWeight: FontWeight.w700,
@@ -1259,20 +1106,20 @@ class _MoneySavedDetailScreenState extends ConsumerState<MoneySavedDetailScreen>
         child: Column(
           children: [
             Icon(
-              Icons.savings_outlined,
+              Icons.calendar_today_outlined,
               size: 64,
               color: textSecondary.withOpacity(0.5),
             ),
             const SizedBox(height: 16),
             Text(
-              'No savings data yet',
+              'No days logged yet',
               style: AppTextStyles.bodyLarge(
                 context,
               ).copyWith(color: textSecondary, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
-              'Start tracking your journey to see your savings',
+              'Start logging your days to track your savings',
               style: AppTextStyles.bodySmall(
                 context,
               ).copyWith(color: textSecondary),

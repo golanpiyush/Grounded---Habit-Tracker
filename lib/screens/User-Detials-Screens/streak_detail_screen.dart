@@ -1,3 +1,4 @@
+import 'package:Grounded/providers/stats_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,10 +27,6 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
 
   // Data state variables
   final _userDb = UserDatabaseService();
-  bool _isLoading = true;
-  int _longestStreak = 0;
-  double _successRate = 0.0;
-  List<Map<String, dynamic>> _recentLogs = [];
 
   @override
   void initState() {
@@ -59,8 +56,18 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
       }
     });
 
-    // Load real data
-    _loadStreakData();
+    // Load data using provider
+    Future.microtask(() {
+      ref
+          .read(streakStatsProvider.notifier)
+          .loadStreakData(widget.currentStreak);
+    });
+  }
+
+  Future<void> _refreshData() async {
+    await ref
+        .read(streakStatsProvider.notifier)
+        .loadStreakData(widget.currentStreak);
   }
 
   @override
@@ -70,57 +77,13 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
     super.dispose();
   }
 
-  Future<void> _loadStreakData() async {
-    try {
-      final userId = _userDb.currentUser?.id;
-      if (userId == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      // Fetch insights for longest streak and success rate
-      final insights = await _userDb.getUserInsights(userId);
-
-      // Fetch recent logs (last 30 days)
-      final endDate = DateTime.now();
-      final startDate = endDate.subtract(const Duration(days: 30));
-      final logs = await _userDb.getLogsForRange(userId, startDate, endDate);
-
-      if (mounted) {
-        setState(() {
-          _longestStreak =
-              insights?['current_longest_streak'] ?? widget.currentStreak;
-
-          // Calculate success rate from logs
-          if (logs.isNotEmpty) {
-            final mindfulDays = logs.where((log) {
-              final dayType = log['day_type'] as String?;
-              final substances = log['substances_used'] as List?;
-              return dayType == 'mindful' || substances?.isEmpty == true;
-            }).length;
-            _successRate = (mindfulDays / logs.length * 100);
-          }
-
-          _recentLogs = logs.take(9).toList();
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('Error loading streak data: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  List<Map<String, dynamic>> _getStreakHistory() {
-    if (_recentLogs.isEmpty) {
-      // Return empty list if no data
+  // Use provider data directly in build method
+  List<Map<String, dynamic>> _getStreakHistory(StreakStats stats) {
+    if (stats.recentLogs.isEmpty) {
       return [];
     }
 
-    // Convert real logs to display format
-    return _recentLogs.map((log) {
+    return stats.recentLogs.map((log) {
       final timestamp = DateTime.parse(log['timestamp']);
       final now = DateTime.now();
       final diff = now.difference(timestamp).inDays;
@@ -180,6 +143,7 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
+    final statsState = ref.watch(streakStatsProvider);
     final isDark = themeMode != AppThemeMode.light;
     final isAmoled = themeMode == AppThemeMode.amoled;
 
@@ -226,7 +190,18 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
             context,
           ).copyWith(color: textPrimary),
         ),
+        actions: [
+          // Add refresh button to app bar
+          IconButton(
+            icon: Icon(Icons.refresh, color: textPrimary),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              _refreshData();
+            },
+          ),
+        ],
       ),
+
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeController,
@@ -245,7 +220,7 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
                   textSecondary,
                 ),
                 SizedBox(height: screenWidth > 400 ? 32 : 24),
-                _isLoading
+                statsState.isLoading
                     ? _buildStatsShimmer(
                         screenWidth,
                         shimmerBaseColor,
@@ -256,6 +231,8 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
                         cardColor,
                         textPrimary,
                         textSecondary,
+                        statsState.longestStreak, // Use provider data
+                        statsState.successRate, // Use provider data
                       ),
                 SizedBox(height: screenWidth > 400 ? 32 : 24),
                 Text(
@@ -266,16 +243,16 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
                   ),
                 ),
                 const SizedBox(height: 16),
-                _isLoading
+                statsState.isLoading
                     ? _buildActivityShimmer(
                         screenWidth,
                         shimmerBaseColor,
                         shimmerHighlightColor,
                       )
-                    : _getStreakHistory().isEmpty
+                    : _getStreakHistory(statsState).isEmpty
                     ? _buildEmptyState(textSecondary)
                     : Column(
-                        children: _getStreakHistory()
+                        children: _getStreakHistory(statsState)
                             .map(
                               (day) => _buildDayItem(
                                 day,
@@ -382,6 +359,8 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
     Color cardColor,
     Color textPrimary,
     Color textSecondary,
+    int longestStreak,
+    double successRate,
   ) {
     final spacing = screenWidth > 400 ? 12.0 : 8.0;
 
@@ -390,7 +369,7 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
         Expanded(
           child: _buildStatBox(
             emoji: EmojiAssets.trophy,
-            value: '$_longestStreak',
+            value: '$longestStreak',
             label: 'Longest Streak',
             color: const Color(0xFFA855F7),
             screenWidth: screenWidth,
@@ -403,7 +382,7 @@ class _StreakDetailScreenState extends ConsumerState<StreakDetailScreen>
         Expanded(
           child: _buildStatBox(
             emoji: EmojiAssets.target,
-            value: '${_successRate.toStringAsFixed(0)}%',
+            value: '${successRate.toStringAsFixed(0)}%',
             label: 'Success Rate',
             color: AppColors.successGreen,
             screenWidth: screenWidth,

@@ -1,3 +1,5 @@
+import 'package:Grounded/Services/SmartNotifications/notificationsTemplate.dart';
+import 'package:Grounded/models/dynamic_insight_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,7 +45,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _data = _getMockData();
+    // _data = _getMockData();
     _fadeController.forward();
     _loadUserData();
   }
@@ -74,21 +76,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         DateTime.now(),
       );
 
-      // Get insights
-      final insights = await _userDb.getUserInsights(userId);
+      // Get insights - FIX: Handle null insights properly
+      final insightsData = await _userDb.getUserInsights(userId);
+      print('📊 Raw insights data: $insightsData');
 
       // Get onboarding data for substances
       final onboardingData = await _userDb.getOnboardingData(userId);
+      print('📋 Onboarding data: $onboardingData');
+
       final substances = onboardingData?['selected_substances'] as List? ?? [];
+      print('💊 User substances: $substances');
 
       // Calculate streak (using first substance or overall)
       int currentStreak = 0;
       if (substances.isNotEmpty) {
-        currentStreak = await _userDb.getSobrietyStreak(userId, substances[0]);
+        currentStreak = await _userDb.getSobrietyStreak(
+          userId,
+          substances[0].toString(),
+        );
+      } else {
+        // Calculate overall streak from logs
+        final allLogs = await _userDb.getLogsForRange(
+          userId,
+          DateTime.now().subtract(Duration(days: 365)),
+          DateTime.now(),
+        );
+        currentStreak = _calculateOverallStreak(allLogs);
       }
+      print('🔥 Current streak: $currentStreak days');
 
       // Calculate money saved
       final moneySaved = await _userDb.calculateMoneySaved(userId);
+      print('💰 Money saved: \$$moneySaved');
 
       // Get this month's logs
       final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
@@ -97,9 +116,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         monthStart,
         DateTime.now(),
       );
-      // Count unique days (you might have multiple entries per day)
 
+      // Count unique mindful days this month
       final uniqueDays = monthLogs
+          .where((log) => (log['day_type'] as String?) == 'mindful')
           .map((log) {
             final timestamp = DateTime.parse(log['timestamp']);
             return DateTime(timestamp.year, timestamp.month, timestamp.day);
@@ -107,15 +127,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           .toSet()
           .length;
 
-      // Calculate weekly average - entries per week
+      // Calculate weekly average
       final weeksInMonth = (DateTime.now().day / 7).ceil();
       double weeklyAverage = weeksInMonth > 0 ? uniqueDays / weeksInMonth : 0.0;
 
       // Build weekly data
       final weeklyData = _buildWeeklyDataFromLogs(weeklyLogs);
 
-      // Build insights
-      final insightsList = await _buildInsights(userId, weeklyLogs);
+      // Build insights - FIX: Pass proper data
+      final insightsList = await _buildInsights(
+        userId,
+        weeklyLogs,
+        insightsData,
+      );
 
       // Build goal progress
       final goalProgress = _buildGoalProgress(onboardingData, currentStreak);
@@ -140,10 +164,47 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
       _fadeController.forward();
       print('✅ Dashboard data loaded successfully');
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ Error loading dashboard data: $e');
+      print('Stack trace: $stackTrace');
       setState(() => _isLoading = false);
     }
+  }
+
+  // Add helper method for overall streak calculation
+  int _calculateOverallStreak(List<Map<String, dynamic>> logs) {
+    int streak = 0;
+    final today = DateTime.now();
+
+    // Sort logs by date descending
+    final sortedLogs = List<Map<String, dynamic>>.from(logs)
+      ..sort((a, b) {
+        final dateA = DateTime.parse(a['timestamp']);
+        final dateB = DateTime.parse(b['timestamp']);
+        return dateB.compareTo(dateA);
+      });
+
+    // Check consecutive mindful days from today backwards
+    DateTime currentDate = today;
+    for (int i = 0; i < 365; i++) {
+      // Check up to 1 year
+      final logForDate = sortedLogs.firstWhere((log) {
+        final logDate = DateTime.parse(log['timestamp']);
+        return logDate.year == currentDate.year &&
+            logDate.month == currentDate.month &&
+            logDate.day == currentDate.day;
+      }, orElse: () => {});
+
+      if (logForDate.isNotEmpty &&
+          (logForDate['day_type'] as String?) == 'mindful') {
+        streak++;
+        currentDate = currentDate.subtract(Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+
+    return streak;
   }
 
   @override
@@ -152,95 +213,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     super.dispose();
   }
 
-  /// Load real data from Supabase
-  Future<void> _loadRealData() async {
-    try {
-      setState(() => _isLoading = true);
-
-      final userId = _userDb.currentUser?.id;
-      if (userId == null) {
-        print('❌ No user logged in');
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      print('📊 Loading dashboard data for user: $userId');
-
-      // Get today's log
-      final todayLog = await _userDb.getDailyLog(userId, DateTime.now());
-
-      // Get weekly logs
-      final weekStart = DateTime.now().subtract(
-        Duration(days: DateTime.now().weekday - 1),
-      );
-      final weeklyLogs = await _userDb.getLogsForRange(
-        userId,
-        weekStart,
-        DateTime.now(),
-      );
-
-      // Get insights
-      final insights = await _userDb.getUserInsights(userId);
-
-      // Get onboarding data for substances
-      final onboardingData = await _userDb.getOnboardingData(userId);
-      final substances = onboardingData?['selected_substances'] as List? ?? [];
-
-      // Calculate streak (using first substance or overall)
-      int currentStreak = 0;
-      if (substances.isNotEmpty) {
-        currentStreak = await _userDb.getSobrietyStreak(userId, substances[0]);
-      }
-
-      // Calculate money saved
-      final moneySaved = await _userDb.calculateMoneySaved(userId);
-
-      // Get this month's logs
-      final monthStart = DateTime(DateTime.now().year, DateTime.now().month, 1);
-      final monthLogs = await _userDb.getLogsForRange(
-        userId,
-        monthStart,
-        DateTime.now(),
-      );
-
-      // Calculate weekly average
-      double weeklyAverage = weeklyLogs.isEmpty ? 0.0 : weeklyLogs.length / 7;
-
-      // Build weekly data
-      final weeklyData = _buildWeeklyDataFromLogs(weeklyLogs);
-
-      // Build insights
-      final insightsList = await _buildInsights(userId, weeklyLogs);
-
-      // Build goal progress
-      final goalProgress = _buildGoalProgress(onboardingData, currentStreak);
-
-      // Determine today's entry
-      final todaysEntry = _buildTodaysEntry(todayLog);
-
-      setState(() {
-        _data = DashboardData(
-          currentStreak: currentStreak,
-          thisMonth: monthLogs.length,
-          weeklyAverage: double.parse(weeklyAverage.toStringAsFixed(1)),
-          moneySaved: moneySaved,
-          todaysEntry: todaysEntry,
-          weeklyData: weeklyData,
-          insights: insightsList,
-          goalProgress: goalProgress,
-          currentMood: _getMoodFromLog(todayLog),
-        );
-        _isLoading = false;
-      });
-
-      _fadeController.forward();
-      print('✅ Dashboard data loaded successfully');
-    } catch (e) {
-      print('❌ Error loading dashboard data: $e');
-      setState(() => _isLoading = false);
-    }
-  }
-
+  /// Build weekly data from logs
   /// Build weekly data from logs
   List<WeeklyData> _buildWeeklyDataFromLogs(List<Map<String, dynamic>> logs) {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -262,11 +235,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
       DayType dayType;
       double height;
+      bool hasLog; // ADD THIS
 
       if (dayLogs.isEmpty) {
-        // No log for this day
-        dayType = DayType.mindful;
+        // No log for this day - don't count as mindful
+        dayType = DayType.used; // CHANGED from mindful to used
         height = 60;
+        hasLog = false; // ADD THIS
       } else {
         // Check day_type from the log
         final dayTypeStr = dayLogs.first['day_type'] as String?;
@@ -282,58 +257,424 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           dayType = DayType.used;
           height = 60;
         }
+        hasLog = true; // ADD THIS
       }
 
-      weekData.add(WeeklyData(day: days[i], dayType: dayType, height: height));
+      weekData.add(
+        WeeklyData(
+          day: days[i],
+          dayType: dayType,
+          height: height,
+          hasLog: hasLog, // ADD THIS
+        ),
+      );
     }
 
     return weekData;
   }
 
-  /// Build insights from data
-  Future<List<Insight>> _buildInsights(
+  /// Build REAL dynamic insights from database and notification templates
+  Future<List<DynamicInsight>> _buildInsights(
     String userId,
     List<Map<String, dynamic>> weeklyLogs,
+    Map<String, dynamic>? insightsData,
   ) async {
-    final insights = <Insight>[];
+    final insights = <DynamicInsight>[];
 
-    // Calculate mindful day percentage
-    final mindfulDays = weeklyLogs.where((log) {
-      final substances = log['substances_used'] as List?;
-      return substances == null || substances.isEmpty;
-    }).length;
-
-    final mindfulPercentage = weeklyLogs.isEmpty
-        ? 0
-        : ((mindfulDays / weeklyLogs.length) * 100).round();
-
-    insights.add(
-      Insight(
-        title: 'Weekly Progress',
-        description: 'You have $mindfulPercentage% mindful days this week',
-        icon: Icons.trending_up,
-      ),
-    );
-
-    // Get trigger analysis
     try {
-      final triggers = await _userDb.getTriggerAnalysis(userId, days: 30);
-      if (triggers.isNotEmpty) {
-        final topTrigger = triggers[0];
+      // Get user insights from database
+      final dbInsights = await _userDb.getUserInsights(userId);
+
+      if (dbInsights == null) {
+        print('⚠️ No insights data available');
+        return insights;
+      }
+
+      print('📊 Database insights: $dbInsights');
+
+      if (dbInsights == null || dbInsights.isEmpty) {
+        print('⚠️ No insights data available');
+        // Provide default encouragement insight
         insights.add(
-          Insight(
-            title: 'Pattern Detected',
+          DynamicInsight(
+            type: InsightType.weeklyProgress,
+            title: 'Welcome to Grounded!',
             description:
-                '${topTrigger['trigger_name']} is your most common trigger',
-            icon: Icons.lightbulb_outline,
+                'Start your journey by logging your first check-in. Every mindful day counts!',
+            icon: Icons.emoji_objects,
+            iconColor: AppColors.primaryGreen,
+            emoji: EmojiAssets.bell,
+          ),
+        );
+        return insights;
+      }
+      // 1. WEEKLY PROGRESS (from actual data)
+      final totalCheckIns = dbInsights['total_check_ins'] as int? ?? 0;
+      final avgMotivation =
+          (dbInsights['avg_motivation'] as num?)?.toDouble() ?? 0.0;
+
+      if (totalCheckIns > 0) {
+        // FIXED: Only count days with actual logs, not empty days
+        final mindfulDays = weeklyLogs.where((log) {
+          final dayType = log['day_type'] as String?;
+          return dayType ==
+              'mindful'; // REMOVED: || (substances?.isEmpty ?? false)
+        }).length;
+
+        // FIXED: Use actual logged days for percentage, not total 7
+        final totalLoggedDays = weeklyLogs.length;
+        final mindfulPercentage = totalLoggedDays > 0
+            ? ((mindfulDays / totalLoggedDays) * 100).round()
+            : 0;
+
+        // Get message from notification template
+        final message = NotificationSelector.getMessage(
+          category: 'data',
+          subcategory: 'frequency_change',
+          variables: {
+            'percentage': mindfulPercentage.toString(),
+            'count': mindfulDays.toString(),
+            'direction': 'this week',
+          },
+        );
+
+        insights.add(
+          DynamicInsight(
+            type: InsightType.weeklyProgress,
+            title: 'Weekly Progress',
+            description: message,
+            icon: Icons.trending_up,
+            iconColor: mindfulPercentage >= 50
+                ? AppColors.successGreen
+                : AppColors.accentOrange,
+            emoji: EmojiAssets.chartUp,
           ),
         );
       }
-    } catch (e) {
-      print('⚠️ Could not fetch triggers: $e');
+
+      // 2. STREAK MILESTONE (from actual database)
+      final currentLongestStreak =
+          dbInsights['current_longest_streak'] as int? ?? 0;
+
+      if (currentLongestStreak >= 3) {
+        final message = NotificationSelector.getMessage(
+          category: 'positive',
+          subcategory: 'streak_milestone',
+          variables: {'days': currentLongestStreak.toString()},
+        );
+
+        insights.add(
+          DynamicInsight(
+            type: InsightType.streakMilestone,
+            title: 'Streak Achievement',
+            description: message,
+            icon: Icons.local_fire_department,
+            iconColor: Color(0xFFEA580C),
+            emoji: EmojiAssets.fire,
+          ),
+        );
+      }
+
+      // 3. MONEY SAVED (from actual calculation)
+      final moneySaved = dbInsights['total_money_saved'] as num? ?? 0;
+
+      if (moneySaved > 0) {
+        final amount = moneySaved.toInt();
+        String comparison;
+
+        if (amount >= 5000) {
+          comparison = 'a used car';
+        } else if (amount >= 2000) {
+          comparison = 'a nice vacation';
+        } else if (amount >= 1000) {
+          comparison = 'a new phone';
+        } else if (amount >= 500) {
+          comparison = 'a weekend getaway';
+        } else {
+          comparison = 'a nice dinner out';
+        }
+
+        final message = NotificationSelector.getMessage(
+          category: 'celebration',
+          subcategory: 'cost_savings',
+          variables: {'amount': amount.toString(), 'comparison': comparison},
+        );
+
+        insights.add(
+          DynamicInsight(
+            type: InsightType.moneySaved,
+            title: 'Money Saved',
+            description: message,
+            icon: Icons.savings,
+            iconColor: AppColors.successGreen,
+            emoji: EmojiAssets.moneyBag,
+          ),
+        );
+      }
+
+      // 4. TRIGGER PATTERN (from actual database)
+      final triggers = await _userDb.getTriggerAnalysis(userId, days: 30);
+
+      if (triggers.isNotEmpty) {
+        final topTrigger = triggers[0];
+        final triggerName = topTrigger['trigger_name'] as String;
+        final percentage = topTrigger['percentage'] as num;
+
+        final message = NotificationSelector.getMessage(
+          category: 'interpretive',
+          subcategory: _mapTriggerToCategory(triggerName),
+          variables: {'time': 'recently'},
+        );
+
+        insights.add(
+          DynamicInsight(
+            type: InsightType.triggerPattern,
+            title: 'Pattern Detected',
+            description:
+                '$triggerName is your main trigger (${percentage.toInt()}%)',
+            icon: Icons.lightbulb_outline,
+            iconColor: Color(0xFFF59E0B),
+            emoji: EmojiAssets.lightbulb,
+          ),
+        );
+      }
+
+      // 5. MOOD TREND (from actual logs)
+      final moodLogs = weeklyLogs
+          .where((log) => log['mood_rating'] != null)
+          .toList();
+
+      if (moodLogs.length >= 3) {
+        final avgMood =
+            moodLogs
+                .map((log) => log['mood_rating'] as int)
+                .reduce((a, b) => a + b) /
+            moodLogs.length;
+
+        String emotionalKey;
+        String moodEmoji;
+        Color moodColor;
+
+        if (avgMood >= 4) {
+          emotionalKey = 'celebration';
+          moodEmoji = EmojiAssets.smileGood;
+          moodColor = Color(0xFF22C55E);
+        } else if (avgMood >= 3) {
+          emotionalKey = 'boredom';
+          moodEmoji = EmojiAssets.neutralFace;
+          moodColor = Color(0xFFF59E0B);
+        } else {
+          emotionalKey = 'stress_anxiety';
+          moodEmoji = EmojiAssets.worriedFace;
+          moodColor = Color(0xFFEF4444);
+        }
+
+        final message = NotificationSelector.getMessage(
+          category: 'emotional',
+          subcategory: emotionalKey,
+          variables: {
+            'userName': 'friend',
+            'score': avgMood.toStringAsFixed(1),
+            'percentage': '${(avgMood * 20).round()}',
+            'count': moodLogs.length.toString(),
+          },
+        );
+
+        insights.add(
+          DynamicInsight(
+            type: InsightType.moodTrend,
+            title: 'Mood Trend',
+            description: message,
+            icon: Icons.mood,
+            iconColor: moodColor,
+            emoji: moodEmoji,
+          ),
+        );
+      }
+
+      // 6. IMPROVEMENT TREND (comparing weeks)
+      final thisWeekStart = DateTime.now().subtract(
+        Duration(days: DateTime.now().weekday - 1),
+      );
+      final weekProgress = await _userDb.getWeeklyProgress(
+        userId,
+        weekStart: thisWeekStart.subtract(const Duration(days: 7)),
+      );
+
+      if (weekProgress.length >= 2) {
+        final thisWeek = weekProgress[0];
+        final lastWeek = weekProgress[1];
+
+        final thisWeekMindful = thisWeek['mindful_days'] as int? ?? 0;
+        final lastWeekMindful = lastWeek['mindful_days'] as int? ?? 0;
+
+        if (thisWeekMindful > lastWeekMindful) {
+          final improvement = thisWeekMindful - lastWeekMindful;
+          final percentage = lastWeekMindful > 0
+              ? ((improvement / lastWeekMindful) * 100).round()
+              : 100;
+
+          final message = NotificationSelector.getMessage(
+            category: 'data',
+            subcategory: 'frequency_change',
+            variables: {
+              'percentage': percentage.toString(),
+              'count': improvement.toString(),
+              'direction': 'improved',
+            },
+          );
+
+          insights.add(
+            DynamicInsight(
+              type: InsightType.improvement,
+              title: 'Week-over-Week',
+              description: message,
+              icon: Icons.arrow_upward,
+              iconColor: AppColors.successGreen,
+              emoji: EmojiAssets.target,
+            ),
+          );
+        }
+      }
+
+      // 7. CONSISTENCY STREAK (from check-ins)
+      if (totalCheckIns >= 5) {
+        final message = NotificationSelector.getMessage(
+          category: 'positive',
+          subcategory: 'mindful_day',
+        );
+
+        insights.add(
+          DynamicInsight(
+            type: InsightType.consistencyStreak,
+            title: 'Logging Champion',
+            description: '$totalCheckIns total check-ins! $message',
+            icon: Icons.calendar_today,
+            iconColor: Color(0xFF8B5CF6),
+            emoji: EmojiAssets.calendar,
+          ),
+        );
+      }
+
+      // 8. GOAL PROGRESS (from database)
+      final onboarding = await _userDb.getOnboardingData(userId);
+      if (onboarding != null) {
+        final goals = onboarding['selected_goals'] as List?;
+        final timeline = onboarding['selected_timeline'] as String?;
+
+        if (goals != null && goals.isNotEmpty) {
+          final primaryGoal = goals[0] as String;
+          final progress = _calculateGoalProgress(
+            currentLongestStreak,
+            timeline ?? '30 days',
+          );
+
+          if (progress >= 0.25) {
+            final message = NotificationSelector.getMessage(
+              category: 'goal',
+              subcategory: _mapGoalToCategory(primaryGoal),
+              variables: {
+                'amount': (progress * 100).round().toString(),
+                'percentage': (progress * 100).round().toString(),
+                'days': currentLongestStreak.toString(),
+              },
+            );
+
+            insights.add(
+              DynamicInsight(
+                type: InsightType.goalProgress,
+                title: 'Goal: $primaryGoal',
+                description: message,
+                icon: Icons.emoji_events,
+                iconColor: AppColors.primaryGreen,
+                emoji: EmojiAssets.trophy,
+              ),
+            );
+          }
+        }
+      }
+
+      // Sort by priority and return top 3-4
+      insights.sort((a, b) {
+        final priority = {
+          InsightType.streakMilestone: 1,
+          InsightType.improvement: 2,
+          InsightType.weeklyProgress: 3,
+          InsightType.moneySaved: 4,
+          InsightType.goalProgress: 5,
+          InsightType.triggerPattern: 6,
+          InsightType.moodTrend: 7,
+          InsightType.consistencyStreak: 8,
+        };
+
+        return (priority[a.type] ?? 99).compareTo(priority[b.type] ?? 99);
+      });
+
+      return insights.take(4).toList();
+    } catch (e, stackTrace) {
+      print('❌ Error building insights: $e');
+      print('Stack trace: $stackTrace');
+
+      // Fallback insight
+      insights.add(
+        DynamicInsight(
+          type: InsightType.weeklyProgress,
+          title: 'Your Journey Starts Here',
+          description:
+              'Log your daily check-ins to unlock personalized insights and track your progress.',
+          icon: Icons.emoji_objects,
+          iconColor: AppColors.primaryGreen,
+          emoji: EmojiAssets.target,
+        ),
+      );
+
+      return insights;
+    }
+  }
+
+  // Helper methods
+  String _mapTriggerToCategory(String trigger) {
+    final mapping = {
+      'stress': 'stress_relief',
+      'boredom': 'routine_habit',
+      'social': 'social_bonding',
+      'emotional': 'emotional_regulation',
+      'work': 'reward_system',
+      'sleep': 'sleep_aid',
+    };
+
+    for (var entry in mapping.entries) {
+      if (trigger.toLowerCase().contains(entry.key)) {
+        return entry.value;
+      }
     }
 
-    return insights;
+    return 'stress_relief'; // default
+  }
+
+  String _mapGoalToCategory(String goal) {
+    if (goal.contains('money') || goal.contains('save')) {
+      return 'financial_goals';
+    } else if (goal.contains('health') || goal.contains('sleep')) {
+      return 'health_goals';
+    } else if (goal.contains('relationship')) {
+      return 'relationship_goals';
+    }
+    return 'health_goals'; // default
+  }
+
+  double _calculateGoalProgress(int currentStreak, String timeline) {
+    int targetDays = 30;
+
+    if (timeline.contains('90')) {
+      targetDays = 90;
+    } else if (timeline.contains('180')) {
+      targetDays = 180;
+    } else if (timeline.contains('365')) {
+      targetDays = 365;
+    }
+
+    return (currentStreak / targetDays).clamp(0.0, 1.0);
   }
 
   Future<void> _showCheckInDialogWithAnimation() async {
@@ -359,41 +700,114 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           animation: animation,
           cardPosition: cardPosition,
           cardSize: cardSize,
+
           onSave: (mood, dayType, notes) async {
+            print('🔘 ANIMATED DIALOG - Save button pressed');
             try {
+              print('🔍 Step 1: Getting user ID');
               final userId = _userDb.currentUser?.id;
-              if (userId != null) {
-                await _userDb.saveDailyLog(
-                  userId: userId,
-                  logDate: DateTime.now(),
-                  substancesUsed: dayType == 'mindful' ? [] : null,
-                  moodRating: _getMoodRating(mood),
-                  notes: notes.isNotEmpty ? notes : null,
-                );
+              if (userId == null) {
+                print('❌ ERROR: No user ID found');
+                throw Exception('No user logged in');
+              }
+              print('✅ User ID: $userId');
 
-                await _loadUserData();
+              // Determine substances based on day type
+              List<String>? substancesUsed;
 
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Check-in saved successfully!'),
-                      backgroundColor: AppColors.successGreen,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      margin: const EdgeInsets.all(16),
-                    ),
-                  );
+              print('🔍 Step 2: Checking selected day type');
+              print('   Selected day type: "$dayType"');
+
+              if (dayType == 'mindful') {
+                print('   → Mindful day selected');
+                substancesUsed = []; // Empty list = no substances
+                print('   ✅ Set substances to empty array: $substancesUsed');
+              } else {
+                print('   → Used/Reduced day selected');
+                print('   🔍 Step 3: Fetching onboarding data...');
+
+                // For 'used' or 'reduced' days, get substances from onboarding
+                final onboarding = await _userDb.getOnboardingData(userId);
+                print('   📋 Onboarding data received: $onboarding');
+
+                if (onboarding != null) {
+                  print('   ✅ Onboarding data exists');
+
+                  if (onboarding['selected_substances'] != null) {
+                    print('   ✅ selected_substances field exists');
+                    print('   Raw value: ${onboarding['selected_substances']}');
+                    print(
+                      '   Type: ${onboarding['selected_substances'].runtimeType}',
+                    );
+
+                    substancesUsed = List<String>.from(
+                      onboarding['selected_substances'] as List,
+                    );
+                    print(
+                      '   ✅ Got substances from onboarding: $substancesUsed',
+                    );
+                  } else {
+                    print('   ⚠️ selected_substances field is null');
+                    substancesUsed = ['substance']; // Fallback
+                    print('   ⚠️ Using fallback: $substancesUsed');
+                  }
+                } else {
+                  print('   ⚠️ Onboarding data is null');
+                  substancesUsed = ['substance']; // Fallback
+                  print('   ⚠️ Using fallback: $substancesUsed');
                 }
               }
-            } catch (e) {
-              print('❌ Error saving check-in: $e');
+
+              print('🔍 Step 4: Preparing to save');
+              print('   Final substances to save: $substancesUsed');
+              print('   Mood rating: ${_getMoodRating(mood)}');
+              print('   Day type: $dayType'); // ✅ ADD THIS LINE
+              print('   Notes: ${notes.isNotEmpty ? notes : "(none)"}');
+
+              // Save to database with dayType parameter
+              print('💾 Step 5: Calling saveDailyLog...');
+              await _userDb.saveDailyLog(
+                userId: userId,
+                logDate: DateTime.now(),
+                dayType: dayType, // ✅ ADD THIS CRITICAL PARAMETER
+                substancesUsed: substancesUsed,
+                moodRating: _getMoodRating(mood),
+                notes: notes.isNotEmpty ? notes : null,
+              );
+              print('✅ saveDailyLog completed');
+
+              // Reload dashboard
+              print('🔄 Step 6: Reloading dashboard...');
+              await _loadUserData();
+              print('✅ Dashboard reloaded');
+
+              if (context.mounted) {
+                print('🚪 Step 7: Closing dialog');
+                Navigator.pop(context);
+
+                print('🎉 Step 8: Showing success message');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Check-in saved successfully!'),
+                    backgroundColor: AppColors.successGreen,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                  ),
+                );
+                print('✅ ALL STEPS COMPLETED SUCCESSFULLY');
+              }
+            } catch (e, stackTrace) {
+              print('❌❌❌ ERROR OCCURRED ❌❌❌');
+              print('Error: $e');
+              print('Stack trace: $stackTrace');
+
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Failed to save check-in'),
+                    content: Text('Failed to save check-in: $e'),
                     backgroundColor: Colors.red,
                     behavior: SnackBarBehavior.floating,
                     margin: const EdgeInsets.all(16),
@@ -847,45 +1261,84 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                 // Save the check-in
                                 try {
                                   final userId = _userDb.currentUser?.id;
-                                  if (userId != null) {
-                                    // Save to database with proper parameters
-                                    await _userDb.saveDailyLog(
-                                      userId: userId,
-                                      logDate: DateTime.now(),
-                                      substancesUsed:
-                                          selectedDayType == 'mindful'
-                                          ? []
-                                          : null,
-                                      moodRating: _getMoodRating(selectedMood),
-                                      notes: notes.isNotEmpty ? notes : null,
-                                    );
+                                  if (userId == null) {
+                                    throw Exception('No user logged in');
+                                  }
 
-                                    // Reload dashboard
-                                    await _loadUserData();
+                                  // Determine substances based on day type
+                                  List<String>? substancesUsed;
 
-                                    Navigator.pop(context);
+                                  print(
+                                    '🔍 Selected day type: $selectedDayType',
+                                  );
 
-                                    // Show success message
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Check-in saved successfully!',
-                                          ),
-                                          backgroundColor:
-                                              AppColors.successGreen,
-                                          behavior: SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          margin: const EdgeInsets.all(16),
-                                        ),
+                                  if (selectedDayType == 'mindful') {
+                                    substancesUsed =
+                                        []; // Empty list = no substances
+                                    print('✅ Mindful day - no substances');
+                                  } else {
+                                    // For 'used' or 'reduced' days, get substances from onboarding
+                                    final onboarding = await _userDb
+                                        .getOnboardingData(userId);
+                                    print('📋 Onboarding data: $onboarding');
+
+                                    if (onboarding != null &&
+                                        onboarding['selected_substances'] !=
+                                            null) {
+                                      substancesUsed = List<String>.from(
+                                        onboarding['selected_substances']
+                                            as List,
+                                      );
+                                      print(
+                                        '✅ Got substances from onboarding: $substancesUsed',
+                                      );
+                                    } else {
+                                      substancesUsed = [
+                                        'substance',
+                                      ]; // Fallback
+                                      print(
+                                        '⚠️ No substances found in onboarding, using fallback',
                                       );
                                     }
+                                  }
+
+                                  print(
+                                    '💾 Saving with substances: $substancesUsed',
+                                  );
+
+                                  // Save to database with proper parameters including dayType
+                                  await _userDb.saveDailyLog(
+                                    userId: userId,
+                                    logDate: DateTime.now(),
+                                    dayType:
+                                        selectedDayType, // ✅ ADD THIS PARAMETER
+                                    substancesUsed: substancesUsed,
+                                    moodRating: _getMoodRating(selectedMood),
+                                    notes: notes.isNotEmpty ? notes : null,
+                                  );
+
+                                  // Reload dashboard
+                                  await _loadUserData();
+
+                                  Navigator.pop(context);
+
+                                  // Show success message
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Check-in saved successfully!',
+                                        ),
+                                        backgroundColor: AppColors.successGreen,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        margin: const EdgeInsets.all(16),
+                                      ),
+                                    );
                                   }
                                 } catch (e) {
                                   print('❌ Error saving check-in: $e');
@@ -997,49 +1450,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     if (moodRating >= 4) return UserMood.good;
     if (moodRating >= 3) return UserMood.okay;
     return UserMood.struggling;
-  }
-
-  DashboardData _getMockData() {
-    return DashboardData(
-      currentStreak: 7,
-      thisMonth: 18,
-      weeklyAverage: 1.4,
-      moneySaved: 145.0,
-      todaysEntry: DailyEntry(
-        date: DateTime.now(),
-        isCompleted: true,
-        notes: "Feeling good",
-        dayType: DayType.mindful,
-      ),
-      weeklyData: [
-        WeeklyData(day: 'Mon', dayType: DayType.used, height: 60),
-        WeeklyData(day: 'Tue', dayType: DayType.mindful, height: 140),
-        WeeklyData(day: 'Wed', dayType: DayType.mindful, height: 140),
-        WeeklyData(day: 'Thu', dayType: DayType.reduced, height: 100),
-        WeeklyData(day: 'Fri', dayType: DayType.mindful, height: 140),
-        WeeklyData(day: 'Sat', dayType: DayType.mindful, height: 140),
-        WeeklyData(day: 'Sun', dayType: DayType.mindful, height: 140),
-      ],
-      insights: [
-        Insight(
-          title: 'Weekday Progress',
-          description: 'You have 78% mindful days on weekdays',
-          icon: Icons.trending_up,
-        ),
-        Insight(
-          title: 'Pattern Detected',
-          description: 'Thursday tends to be more challenging',
-          icon: Icons.lightbulb_outline,
-        ),
-      ],
-      goalProgress: GoalProgress(
-        goalName: 'Reduce by 50%',
-        subtitle: 'Long-term goal',
-        progress: 0.68,
-        metric: '68% achieved',
-      ),
-      currentMood: UserMood.good,
-    );
   }
 
   String _getFormattedDate() {
@@ -1162,7 +1572,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             bottom: GroundedSpacing.md,
                           ),
                           child: _buildInsightCard(
-                            insight as Insight,
+                            insight,
                             currentTheme,
                           ), // PASS THEME
                         ),
@@ -1681,8 +2091,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   Widget _buildWeeklyCard(AppThemeMode currentTheme) {
     final screenWidth = MediaQuery.of(context).size.width;
+
+    // FIXED: Only count days with actual mindful logs (height > 80 indicates real mindful day)
     final mindfulCount = _data.weeklyData
-        .where((d) => d.dayType == DayType.mindful)
+        .where((d) => d.dayType == DayType.mindful && d.height > 80)
         .length;
 
     return GestureDetector(
@@ -1847,13 +2259,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final screenWidth = MediaQuery.of(context).size.width;
     final iconSize = screenWidth > 400 ? 52.0 : 48.0;
 
-    String emojiAsset;
-    if (insight.icon == Icons.trending_up) {
-      emojiAsset = EmojiAssets.chartUp;
-    } else if (insight.icon == Icons.lightbulb_outline) {
-      emojiAsset = EmojiAssets.lightbulb;
+    // Get emoji and color from DynamicInsight if available
+    final String emojiAsset;
+    final Color iconColor;
+
+    if (insight is DynamicInsight) {
+      emojiAsset = insight.emoji;
+      iconColor = insight.iconColor;
     } else {
-      emojiAsset = EmojiAssets.lightbulb;
+      // Fallback for regular Insight
+      emojiAsset = insight.icon == Icons.trending_up
+          ? EmojiAssets.chartUp
+          : EmojiAssets.lightbulb;
+      iconColor = AppColors.successGreen;
     }
 
     return Container(
@@ -1882,8 +2300,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.successGreen.withOpacity(0.15),
-                  AppColors.successGreen.withOpacity(0.05),
+                  iconColor.withOpacity(0.15),
+                  iconColor.withOpacity(0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(12),
@@ -2119,7 +2537,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 }
 
-// ADD this new widget class at the bottom of the file (outside the _DashboardScreenState class)
 class _CheckInDialogContent extends StatefulWidget {
   final Animation<double> animation;
   final Offset cardPosition;
@@ -2159,7 +2576,7 @@ class _CheckInDialogContentState extends State<_CheckInDialogContent> {
     final userId = widget.userDb.currentUser?.id;
     if (userId != null) {
       final todayLog = await widget.userDb.getDailyLog(userId, DateTime.now());
-      if (todayLog != null) {
+      if (todayLog != null && mounted) {
         setState(() {
           selectedDayType = todayLog['day_type'] as String? ?? 'mindful';
           final moodRating = todayLog['mood_rating'] as int?;
@@ -2170,7 +2587,9 @@ class _CheckInDialogContentState extends State<_CheckInDialogContent> {
         });
       }
     }
-    setState(() => isLoading = false);
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
   }
 
   String _getMoodFromRating(int rating) {
@@ -2459,7 +2878,6 @@ class _CheckInDialogContentState extends State<_CheckInDialogContent> {
                                       );
                                     }).toList(),
                                   ),
-
                                   const SizedBox(height: 24),
 
                                   // Day Type Selection
@@ -2481,10 +2899,19 @@ class _CheckInDialogContentState extends State<_CheckInDialogContent> {
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: GestureDetector(
                                         onTap: () {
+                                          print(
+                                            '🎯 DAY TYPE TAPPED: ${option['value']}',
+                                          );
+                                          print(
+                                            '   Previous value: $selectedDayType',
+                                          );
                                           HapticFeedback.lightImpact();
-                                          setState(
-                                            () => selectedDayType =
-                                                option['value'] as String,
+                                          setState(() {
+                                            selectedDayType =
+                                                option['value'] as String;
+                                          });
+                                          print(
+                                            '   New value: $selectedDayType',
                                           );
                                         },
                                         child: Container(
@@ -2548,7 +2975,6 @@ class _CheckInDialogContentState extends State<_CheckInDialogContent> {
                                       ),
                                     );
                                   }).toList(),
-
                                   const SizedBox(height: 4),
                                 ],
                               ),
@@ -2594,9 +3020,10 @@ class _CheckInDialogContentState extends State<_CheckInDialogContent> {
                                   Expanded(
                                     flex: 2,
                                     child: ElevatedButton(
-                                      onPressed: () {
+                                      onPressed: () async {
                                         HapticFeedback.mediumImpact();
-                                        widget.onSave(
+                                        // Call the onSave callback with current values
+                                        await widget.onSave(
                                           selectedMood,
                                           selectedDayType,
                                           notesController.text,
@@ -2643,21 +3070,5 @@ class _CheckInDialogContentState extends State<_CheckInDialogContent> {
   void dispose() {
     notesController.dispose();
     super.dispose();
-  }
-}
-
-// Helper method for mood rating (add to _DashboardScreenState if not already present)
-int _getMoodRating(String mood) {
-  switch (mood) {
-    case 'great':
-      return 5;
-    case 'good':
-      return 4;
-    case 'okay':
-      return 3;
-    case 'struggling':
-      return 2;
-    default:
-      return 3;
   }
 }

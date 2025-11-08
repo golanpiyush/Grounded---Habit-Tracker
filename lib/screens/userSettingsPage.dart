@@ -1,6 +1,9 @@
 // Add this to your pubspec.yaml dependencies:
 // shimmer: ^3.0.0
 
+import 'package:Grounded/Services/auto_log_scheduler.dart';
+import 'package:Grounded/Services/auto_log_service.dart';
+import 'package:Grounded/screens/Community/community_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -158,6 +161,107 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     if (mounted) Navigator.of(context).pop();
   }
 
+  Future<void> _updatePreference(String key, bool value) async {
+    final userId = _userDb.currentUser?.id;
+    if (userId == null) return;
+
+    setState(() {
+      _onboardingData?[key] = value;
+    });
+
+    await _userDb.updateAppPreferences(
+      userId: userId,
+      dailyReminders: key == 'daily_reminders' ? value : null,
+      motivationalMessages: key == 'motivational_messages' ? value : null,
+      analyticsEnabled: key == 'analytics_enabled' ? value : null,
+      autoLogEnabled: key == 'auto_log_enabled' ? value : null,
+    );
+
+    // Handle auto-log scheduling
+    if (key == 'auto_log_enabled') {
+      if (value) {
+        // Enabled: Schedule daily checks
+        await AutoLogScheduler.scheduleDailyCheck();
+
+        // Show confirmation dialog to backfill missing days
+        final shouldBackfill = await _showBackfillDialog();
+
+        if (shouldBackfill == true) {
+          final autoLogService = AutoLogService();
+          await autoLogService.backfillMissingDays(daysToCheck: 7);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Auto-log enabled and missing days backfilled'),
+              backgroundColor: AppColors.successGreen,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Auto-log enabled for future days'),
+              backgroundColor: AppColors.successGreen,
+            ),
+          );
+        }
+      } else {
+        // Disabled: Cancel scheduled checks
+        await AutoLogScheduler.cancelScheduledChecks();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Auto-log disabled'),
+            backgroundColor: AppColors.accentOrange,
+          ),
+        );
+      }
+    }
+
+    _invalidateCache();
+  }
+
+  /// Show dialog asking if user wants to backfill missing days
+  Future<bool?> _showBackfillDialog() async {
+    final currentTheme = ref.watch(themeProvider);
+
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColorsTheme.getCard(currentTheme),
+        title: Text(
+          'Backfill Missing Days?',
+          style: AppTextStyles.bodyLarge(
+            context,
+          ).copyWith(color: AppColorsTheme.getTextPrimary(currentTheme)),
+        ),
+        content: Text(
+          'Would you like to automatically mark the last 7 days without logs as "Used"?',
+          style: TextStyle(
+            color: AppColorsTheme.getTextSecondary(currentTheme),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'No, Only Future Days',
+              style: TextStyle(
+                color: AppColorsTheme.getTextSecondary(currentTheme),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Yes, Backfill',
+              style: TextStyle(color: AppColors.primaryGreen),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   double _calculateMaxRadius(Size size, Offset center) {
     final double maxX = math.max(center.dx, size.width - center.dx);
     final double maxY = math.max(center.dy, size.height - center.dy);
@@ -220,10 +324,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               _buildShimmerCard(),
               const SizedBox(height: 24),
               _buildSectionTitle('App Preferences'),
+              const SizedBox(height: 24),
+              _buildSectionTitle('Community'),
               const SizedBox(height: 12),
-              _buildShimmerCard(height: 200),
+              _buildShimmerCard(),
               const SizedBox(height: 24),
               _buildSectionTitle('Account'),
+
               const SizedBox(height: 12),
               _buildShimmerCard(height: 180),
               const SizedBox(height: 80),
@@ -326,6 +433,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               _buildSectionTitle('App Preferences'),
               const SizedBox(height: 12),
               _buildPreferencesCard(),
+              const SizedBox(height: 24),
+              _buildSectionTitle('Community'),
+              const SizedBox(height: 12),
+              _buildCommunityCard(),
               const SizedBox(height: 24),
               _buildSectionTitle('Account'),
               const SizedBox(height: 12),
@@ -555,11 +666,73 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             onChanged: (value) => _updatePreference('analytics_enabled', value),
           ),
           _buildDivider(),
+          // NEW: Auto-log switch
+          _buildSwitchTileWithDescription(
+            emoji: EmojiAssets.calendar,
+            title: 'Auto-log Missing Days',
+            description: 'Automatically mark unlogged days as "Used"',
+            value: _onboardingData?['auto_log_enabled'] ?? false,
+            onChanged: (value) => _updatePreference('auto_log_enabled', value),
+          ),
+          _buildDivider(),
           _buildNavigationTile(
             emoji: EmojiAssets.palette,
             title: 'Theme',
             value: _getThemeDisplayName(currentTheme),
             onTap: () => _changeTheme(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSwitchTileWithDescription({
+    required String emoji,
+    required String title,
+    required String description,
+    required bool value,
+    required Function(bool) onChanged,
+  }) {
+    final currentTheme = ref.watch(themeProvider);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Image.asset(emoji, width: 24, height: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.bodyMedium(context).copyWith(
+                    color: AppColorsTheme.getTextPrimary(currentTheme),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: AppTextStyles.caption(context).copyWith(
+                    color: AppColorsTheme.getTextSecondary(currentTheme),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            value: value,
+            onChanged: (newValue) {
+              HapticFeedback.lightImpact();
+              onChanged(newValue);
+            },
+            activeColor: AppColors.primaryGreen,
           ),
         ],
       ),
@@ -779,6 +952,87 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     );
   }
 
+  Widget _buildCommunityCard() {
+    final currentTheme = ref.watch(themeProvider);
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        _openCommunity();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColorsTheme.getCard(currentTheme),
+          border: Border.all(color: AppColorsTheme.getBorder(currentTheme)),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.primaryGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.groups,
+                  color: AppColors.primaryGreen,
+                  size: 24,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Community',
+                    style: AppTextStyles.bodyMedium(context).copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColorsTheme.getTextPrimary(currentTheme),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Connect with others on the same journey',
+                    style: AppTextStyles.bodySmall(context).copyWith(
+                      color: AppColorsTheme.getTextSecondary(currentTheme),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: AppColorsTheme.getTextSecondary(currentTheme),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openCommunity() async {
+    HapticFeedback.lightImpact();
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CommunityScreen()),
+    );
+  }
+
   Widget _buildDivider() {
     final currentTheme = ref.watch(themeProvider);
 
@@ -948,24 +1202,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         );
       }
     }
-  }
-
-  Future<void> _updatePreference(String key, bool value) async {
-    final userId = _userDb.currentUser?.id;
-    if (userId == null) return;
-
-    setState(() {
-      _onboardingData?[key] = value;
-    });
-
-    await _userDb.updateAppPreferences(
-      userId: userId,
-      dailyReminders: key == 'daily_reminders' ? value : null,
-      motivationalMessages: key == 'motivational_messages' ? value : null,
-      analyticsEnabled: key == 'analytics_enabled' ? value : null,
-    );
-
-    _invalidateCache(); // Invalidate cache on update
   }
 
   Future<void> _changeTheme() async {

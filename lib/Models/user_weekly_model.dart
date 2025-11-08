@@ -4,8 +4,14 @@ class WeeklyData {
   final String day;
   final DayType dayType;
   final double height;
+  final bool hasLog;
 
-  WeeklyData({required this.day, required this.dayType, required this.height});
+  WeeklyData({
+    required this.day,
+    required this.dayType,
+    required this.height,
+    required this.hasLog,
+  });
 }
 
 // ===============================

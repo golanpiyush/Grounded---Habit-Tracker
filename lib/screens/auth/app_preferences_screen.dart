@@ -1,4 +1,7 @@
 // app_preferences_screen.dart
+import 'dart:convert';
+
+import 'package:Grounded/Services/integrated_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:Grounded/models/onboarding_data.dart';
 import 'package:Grounded/providers/userDB.dart';
@@ -25,7 +28,7 @@ class AppPreferencesScreen extends StatefulWidget {
 class _AppPreferencesScreenState extends State<AppPreferencesScreen>
     with SingleTickerProviderStateMixin {
   final UserDatabaseService _dbService = UserDatabaseService();
-
+  static final _notifService = IntegratedNotificationService();
   String _selectedTheme = 'Light';
   bool _dailyReminders = true;
   String _reminderTime = '20:00';
@@ -121,6 +124,18 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
     }
   }
 
+  static Future<void> initializeNotificationsAfterOnboarding(
+    String userId,
+  ) async {
+    print('🔔 Initializing notifications after onboarding...');
+    try {
+      await _notifService.initializeAfterAuth(userId);
+      print('✅ Notifications initialized');
+    } catch (e) {
+      print('❌ Error initializing notifications: $e');
+    }
+  }
+
   Future<void> _handleComplete() async {
     print('\n=== COMPLETING ONBOARDING - NAVIGATING TO HOME ===');
     print('⚙️ APP PREFERENCES DATA:');
@@ -205,6 +220,10 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
           onboardingData: widget.onboardingData,
         );
         print('  ✅ Onboarding data saved to database');
+
+        // Initialize notifications with the current user ID
+        await initializeNotificationsAfterOnboarding(currentUser.id);
+        print('  ✅ Notifications initialized for user: ${currentUser.id}');
       } else {
         print('  ⚠ No user logged in - skipping database save');
       }
@@ -311,6 +330,177 @@ class _AppPreferencesScreenState extends State<AppPreferencesScreen>
         MaterialPageRoute(builder: (context) => const DashboardScreen()),
       );
     }
+  }
+
+  // Add this method to _AppPreferencesScreenState class
+  Future<void> _saveCompleteOnboardingData(String userId) async {
+    try {
+      print('\n📦 SAVING COMPLETE ONBOARDING DATA...');
+
+      // Get SharedPreferences to retrieve all stored data
+      final prefs = await SharedPreferences.getInstance();
+
+      // Convert List<String> to Set<String> for the model
+      final goalsList = prefs.getStringList('user_goals') ?? [];
+      final substancesList = prefs.getStringList('user_substances') ?? [];
+      final reasonsList = prefs.getStringList('user_selected_reasons') ?? [];
+
+      // Build complete onboarding data with proper type conversions
+      final onboardingData = OnboardingData(
+        // Goals & Motivation - Convert List to Set
+        selectedGoals: Set<String>.from(goalsList),
+        selectedTimeline: prefs.getString('user_timeline') ?? '30 days',
+        motivationLevel: prefs.getInt('user_motivation_level') ?? 5,
+        primaryReason: prefs.getString('user_primary_reason') ?? 'Health',
+        selectedReasons: Set<String>.from(reasonsList),
+
+        // Substances - Convert List to Set
+        selectedSubstances: Set<String>.from(substancesList),
+        substanceAttempts: _parseSubstanceAttempts(prefs),
+        substanceDurations: _parseSubstanceDurations(prefs),
+
+        // Usage Patterns
+        usagePatterns: await _buildUsagePatterns(prefs),
+
+        // Safety - Fix emergency contacts type
+        supportSystem: prefs.getString('user_support_system') ?? 'alone',
+        emergencyContacts: _parseEmergencyContacts(prefs),
+        withdrawalConcern: prefs.getString('user_withdrawal_concern') ?? 'none',
+        usageContext: prefs.getString('user_usage_context') ?? 'alone',
+        crisisResourcesEnabled:
+            prefs.getBool('user_crisis_resources_enabled') ?? true,
+        harmReductionInfo: prefs.getBool('user_harm_reduction_info') ?? true,
+      );
+
+      // Save to database
+      await _dbService.saveOnboardingData(
+        userId: userId,
+        onboardingData: onboardingData,
+      );
+
+      // Save individual substance patterns
+      await _saveSubstancePatterns(userId, prefs);
+
+      print('✅ COMPLETE ONBOARDING DATA SAVED SUCCESSFULLY');
+    } catch (e) {
+      print('❌ Error saving complete onboarding data: $e');
+      rethrow;
+    }
+  }
+
+  // Helper methods for parsing data
+  Map<String, String> _parseSubstanceAttempts(SharedPreferences prefs) {
+    final attemptsJson = prefs.getString('user_previous_attempts');
+    if (attemptsJson != null) {
+      try {
+        return Map<String, String>.from(json.decode(attemptsJson));
+      } catch (e) {
+        print('Error parsing substance attempts: $e');
+      }
+    }
+    return {};
+  }
+
+  Map<String, String> _parseSubstanceDurations(SharedPreferences prefs) {
+    final durationsJson = prefs.getString('user_substance_durations');
+    if (durationsJson != null) {
+      try {
+        return Map<String, String>.from(json.decode(durationsJson));
+      } catch (e) {
+        print('Error parsing substance durations: $e');
+      }
+    }
+    return {};
+  }
+
+  List<Map<String, String>> _parseEmergencyContacts(SharedPreferences prefs) {
+    final contactsJson = prefs.getString('user_emergency_contacts');
+    if (contactsJson != null && contactsJson.isNotEmpty) {
+      try {
+        final List<dynamic> contactsList = json.decode(contactsJson);
+        return contactsList
+            .map((contact) {
+              if (contact is Map<String, dynamic>) {
+                // Convert Map<String, dynamic> to Map<String, String>
+                return contact.map(
+                  (key, value) => MapEntry(key, value.toString()),
+                );
+              }
+              return <String, String>{};
+            })
+            .where((contact) => contact.isNotEmpty)
+            .toList();
+      } catch (e) {
+        print('Error parsing emergency contacts: $e');
+      }
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> _buildUsagePatterns(
+    SharedPreferences prefs,
+  ) async {
+    final patterns = <String, dynamic>{};
+    final substances = prefs.getStringList('user_substances') ?? [];
+
+    for (final substance in substances) {
+      patterns[substance] = {
+        'frequency': prefs.getString('${substance}_frequency'),
+        'context': prefs.getString('${substance}_context'),
+        'consumptionMethods': prefs.getStringList(
+          '${substance}_consumptionMethods',
+        ),
+        'typicalAmounts': prefs.getString('${substance}_typicalAmounts'),
+        'costPerUse': prefs.getString('${substance}_costPerUse'),
+        'triggers': prefs.getStringList('${substance}_triggers'),
+        'impacts': prefs.getStringList('${substance}_impacts'),
+        'timeOfDay': prefs.getString('${substance}_timeOfDay'),
+      };
+    }
+
+    return patterns;
+  }
+
+  Future<void> _saveSubstancePatterns(
+    String userId,
+    SharedPreferences prefs,
+  ) async {
+    final substances = prefs.getStringList('user_substances') ?? [];
+
+    for (final substance in substances) {
+      try {
+        await _dbService.saveSubstancePattern(
+          userId: userId,
+          substanceName: substance,
+          frequency: prefs.getString('${substance}_frequency'),
+          context: prefs.getString('${substance}_context'),
+          consumptionMethods: prefs.getStringList(
+            '${substance}_consumptionMethods',
+          ),
+          typicalAmounts: _parseTypicalAmounts(
+            prefs.getString('${substance}_typicalAmounts'),
+          ),
+          costPerUse: prefs.getString('${substance}_costPerUse'),
+          triggers: prefs.getStringList('${substance}_triggers'),
+          impacts: prefs.getStringList('${substance}_impacts'),
+          timeOfDay: prefs.getString('${substance}_timeOfDay'),
+        );
+        print('  ✅ Pattern saved for $substance');
+      } catch (e) {
+        print('  ❌ Error saving pattern for $substance: $e');
+      }
+    }
+  }
+
+  Map<String, String> _parseTypicalAmounts(String? amountsJson) {
+    if (amountsJson != null) {
+      try {
+        return Map<String, String>.from(json.decode(amountsJson));
+      } catch (e) {
+        print('Error parsing typical amounts: $e');
+      }
+    }
+    return {};
   }
 
   void _showTimePicker() async {

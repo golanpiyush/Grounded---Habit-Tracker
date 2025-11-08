@@ -31,6 +31,7 @@ class _UsagePatternsScreenState extends State<UsagePatternsScreen>
   final Map<String, Map<String, dynamic>> _substancePatterns = {};
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _costController = TextEditingController();
+
   final Map<String, GlobalKey<_AnimatedMethodInputState>> _methodInputKeys = {};
   late AnimationController _animationController;
 
@@ -608,7 +609,10 @@ class _UsagePatternsScreenState extends State<UsagePatternsScreen>
     print('Motivation Level: ${widget.onboardingData.motivationLevel}');
     print('Primary Reason: ${widget.onboardingData.primaryReason}');
     print('Selected Substances: ${widget.onboardingData.selectedSubstances}');
-    print('Previous Attempts: ${widget.onboardingData.previousAttempts}');
+    print('Substance Durations: ${widget.onboardingData.substanceDurations}');
+    print(
+      'Substance Attempts: ${widget.onboardingData.substanceAttempts}',
+    ); // CHANGED
     print('==========================================\n');
 
     if (mounted) {

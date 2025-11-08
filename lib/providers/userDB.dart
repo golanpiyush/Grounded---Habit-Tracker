@@ -1,5 +1,6 @@
 // lib/services/user_db.dart
 
+import 'package:Grounded/Services/integrated_notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/onboarding_data.dart';
 
@@ -11,10 +12,13 @@ class UserDatabaseService {
   // ============================================
 
   /// Sign up new user
+  /// Sign up new user
   Future<AuthResponse> signUp({
     required String email,
     required String password,
     String? fullName,
+    int? age,
+    String? gender,
   }) async {
     try {
       print('🔐 Signing up user: $email');
@@ -22,7 +26,11 @@ class UserDatabaseService {
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
-        data: {'full_name': fullName},
+        data: {
+          'full_name': fullName,
+          if (age != null) 'age': age,
+          if (gender != null) 'gender': gender,
+        },
       );
 
       if (response.user != null) {
@@ -33,6 +41,8 @@ class UserDatabaseService {
           userId: response.user!.id,
           email: email,
           fullName: fullName,
+          age: age,
+          gender: gender,
         );
       }
 
@@ -107,15 +117,19 @@ class UserDatabaseService {
     required String userId,
     required String email,
     String? fullName,
+    int? age,
+    String? gender,
   }) async {
     try {
       print('👤 Creating user profile for: $userId');
 
-      // Method 1: Try direct insert first (remove the unused response variable)
+      // Method 1: Try direct insert first
       await _supabase.from('users').insert({
         'id': userId,
         'email': email,
         'full_name': fullName,
+        'age': age,
+        'gender': gender,
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       });
@@ -132,6 +146,8 @@ class UserDatabaseService {
             'user_id': userId,
             'user_email': email,
             'user_full_name': fullName,
+            'user_age': age,
+            'user_gender': gender,
           },
         );
         print('✅ User profile created via function');
@@ -144,6 +160,8 @@ class UserDatabaseService {
             'id': userId,
             'email': email,
             'full_name': fullName,
+            'age': age,
+            'gender': gender,
             'created_at': DateTime.now().toIso8601String(),
             'updated_at': DateTime.now().toIso8601String(),
           });
@@ -266,7 +284,7 @@ class UserDatabaseService {
 
       // Substances
       'selected_substances': data.selectedSubstances.toList(),
-      'previous_attempts': data.previousAttempts,
+      'previous_attempts': data.substanceAttempts,
       'substance_durations': data.substanceDurations,
 
       // Usage Patterns (stored as JSONB)
@@ -396,8 +414,81 @@ class UserDatabaseService {
   // DAILY LOGS
   // ============================================
 
-  /// Save daily log
+  /// Save daily log with smart override logic
+  /// - If a log exists for the day, it will be REPLACED (not duplicated)
+  /// - Later entries override earlier ones (e.g., "used" overrides "mindful")
+  /// - Uses upsert with unique constraint on (user_id, date)
   Future<void> saveDailyLog({
+    required String userId,
+    required DateTime logDate,
+    required String dayType, // ✅ ADD THIS PARAMETER - pass from UI
+    List<String>? substancesUsed,
+    Map<String, dynamic>? amountsUsed,
+    double? costSpent,
+    int? moodRating,
+    List<String>? emotions,
+    List<String>? triggersExperienced,
+    String? notes,
+  }) async {
+    try {
+      print('📝 Saving daily log for: ${logDate.toString().split(' ')[0]}');
+      print('  Selected day type: $dayType');
+      print('  Substances: ${substancesUsed ?? "none"}');
+
+      // Normalize the date to start of day (remove time component)
+      final normalizedDate = DateTime(logDate.year, logDate.month, logDate.day);
+
+      // CRITICAL: First delete ANY existing logs for this exact day
+      // This ensures no duplicates and allows overriding
+      final startOfDay = normalizedDate;
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      await _supabase
+          .from('daily_logs')
+          .delete()
+          .eq('user_id', userId)
+          .gte('timestamp', startOfDay.toIso8601String())
+          .lt('timestamp', endOfDay.toIso8601String());
+
+      print('  ✓ Cleared any existing logs for this day');
+
+      // Now insert the new log with the user's selected day type
+      final logMap = {
+        'user_id': userId,
+        'timestamp': normalizedDate.toIso8601String(),
+        'day_type': dayType, // ✅ Use the day type from user selection
+        'substances_used': substancesUsed ?? [],
+        'amounts_used': amountsUsed,
+        'cost_spent': costSpent,
+        'mood_rating': moodRating,
+        'emotions': emotions,
+        'triggers_experienced': triggersExperienced,
+        'notes': notes,
+        'created_at': DateTime.now().toIso8601String(),
+      };
+
+      await _supabase.from('daily_logs').insert(logMap);
+
+      print('✅ Daily log saved successfully');
+      print(
+        '  Final entry: $dayType for ${normalizedDate.toString().split(' ')[0]}',
+      );
+
+      // Send positive reinforcement notification
+      await _sendPositiveReinforcementAfterLog(
+        userId: userId,
+        dayType: dayType,
+        substancesUsed: substancesUsed,
+      );
+    } catch (e) {
+      print('❌ Error saving daily log: $e');
+      rethrow;
+    }
+  }
+
+  /// Alternative: Using UPSERT with a unique constraint
+  /// This requires adding a unique constraint to your database first
+  Future<void> saveDailyLogWithUpsert({
     required String userId,
     required DateTime logDate,
     List<String>? substancesUsed,
@@ -409,14 +500,26 @@ class UserDatabaseService {
     String? notes,
   }) async {
     try {
-      print('📝 Saving daily log for: ${logDate.toString().split(' ')[0]}');
+      print(
+        '📝 Saving daily log (upsert) for: ${logDate.toString().split(' ')[0]}',
+      );
+
+      // Normalize the date
+      final normalizedDate = DateTime(logDate.year, logDate.month, logDate.day);
+
+      // Determine day type
+      String dayType = 'mindful';
+      if (substancesUsed != null && substancesUsed.isNotEmpty) {
+        dayType = 'used';
+      } else if (costSpent != null && costSpent > 0) {
+        dayType = 'reduced';
+      }
 
       final logMap = {
         'user_id': userId,
-        'timestamp': logDate.toIso8601String(), // ✅ Changed to 'timestamp'
-        'day_type':
-            'mindful', // ✅ Add required field (determine based on substances)
-        'substances_used': substancesUsed,
+        'timestamp': normalizedDate.toIso8601String(),
+        'day_type': dayType,
+        'substances_used': substancesUsed ?? [],
         'amounts_used': amountsUsed,
         'cost_spent': costSpent,
         'mood_rating': moodRating,
@@ -426,11 +529,90 @@ class UserDatabaseService {
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      await _supabase.from('daily_logs').upsert(logMap);
-      print('✅ Daily log saved');
+      // Upsert will update if exists, insert if new
+      // Requires: ALTER TABLE daily_logs ADD CONSTRAINT unique_user_date UNIQUE (user_id, timestamp);
+      await _supabase
+          .from('daily_logs')
+          .upsert(logMap, onConflict: 'user_id,timestamp');
+
+      print('✅ Daily log upserted successfully');
+
+      await _sendPositiveReinforcementAfterLog(
+        userId: userId,
+        dayType: dayType,
+        substancesUsed: substancesUsed,
+      );
     } catch (e) {
-      print('❌ Error saving daily log: $e');
+      print('❌ Error upserting daily log: $e');
       rethrow;
+    }
+  }
+
+  /// Send positive reinforcement after logging
+  Future<void> _sendPositiveReinforcementAfterLog({
+    required String userId,
+    required String dayType,
+    List<String>? substancesUsed,
+  }) async {
+    print('🔔 Sending positive reinforcement...');
+
+    try {
+      print('  Step 1: Fetching logs...');
+      // Calculate current streak
+      final endDate = DateTime.now();
+      final startDate = endDate.subtract(const Duration(days: 90));
+      final logs = await getLogsForRange(userId, startDate, endDate);
+
+      print('  Step 2: Creating mutable copy...');
+      // Create a mutable copy of the list before sorting
+      final sortedLogs = List<Map<String, dynamic>>.from(logs);
+
+      print('  Step 3: Sorting logs...');
+      // Now sort the mutable copy
+      sortedLogs.sort((a, b) {
+        final dateA = DateTime.parse(a['timestamp'] as String);
+        final dateB = DateTime.parse(b['timestamp'] as String);
+        return dateB.compareTo(dateA);
+      });
+
+      print('  Step 4: Calculating streak...');
+      // Calculate streak
+      int streak = 0;
+      for (var log in sortedLogs) {
+        final logDayType = log['day_type'] as String?;
+
+        print('    Processing log: day_type=$logDayType');
+
+        // ✅ FIX: Create mutable copy of substances list too
+        final substancesList = log['substances_used'];
+        final substances = substancesList != null
+            ? List<dynamic>.from(substancesList as List)
+            : null;
+
+        final isMindful =
+            logDayType == 'mindful' || (substances?.isEmpty ?? false);
+
+        if (isMindful) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+
+      print('  Step 5: Calling notification service (streak: $streak)...');
+      // Import and call notification service
+      final notifService = IntegratedNotificationService();
+      await notifService.sendPositiveReinforcement(
+        userId: userId,
+        entryType: dayType,
+        streakDays: streak,
+      );
+
+      print('✅ Positive reinforcement sent (streak: $streak days)');
+    } catch (e, stackTrace) {
+      print('❌ Error sending reinforcement: $e');
+      print('Stack trace: $stackTrace');
+      // Don't rethrow - notification failure shouldn't break log saving
     }
   }
 
@@ -850,6 +1032,7 @@ class UserDatabaseService {
   }
 
   /// Update app preferences
+  /// Update app preferences
   Future<void> updateAppPreferences({
     required String userId,
     String? appTheme,
@@ -858,6 +1041,7 @@ class UserDatabaseService {
     bool? analyticsEnabled,
     bool? motivationalMessages,
     String? dataSharing,
+    bool? autoLogEnabled, // NEW
   }) async {
     try {
       print('⚙️ Updating app preferences...');
@@ -875,6 +1059,8 @@ class UserDatabaseService {
         updates['motivational_messages'] = motivationalMessages;
       }
       if (dataSharing != null) updates['data_sharing'] = dataSharing;
+      if (autoLogEnabled != null)
+        updates['auto_log_enabled'] = autoLogEnabled; // NEW
 
       await _supabase
           .from('user_onboarding')

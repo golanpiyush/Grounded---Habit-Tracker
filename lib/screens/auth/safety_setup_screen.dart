@@ -170,12 +170,12 @@ class _SafetySetupScreenState extends State<SafetySetupScreen>
     print('🎯 GOALS & MOTIVATION (Screen 1):');
     print('  Selected Goals: ${finalData.selectedGoals}');
     print('  Timeline: ${finalData.selectedTimeline ?? 'Not set'}');
-    print('  Motivation Level: ${finalData.motivationLevel ?? 'Not set'}');
+    print('  Motivation Level: ${finalData.motivationLevel}');
     print('  Primary Reason: ${finalData.primaryReason ?? 'Not set'}');
 
     print('\n💊 SUBSTANCES (Screen 2):');
     print('  Selected Substances: ${finalData.selectedSubstances}');
-    print('  Previous Attempts: ${finalData.previousAttempts ?? 'Not set'}');
+    print('  Previous Attempts: ${finalData.substanceAttempts}');
 
     print('\n📊 USAGE PATTERNS (Screen 3):');
     print('  (Data saved in SharedPreferences per substance)');

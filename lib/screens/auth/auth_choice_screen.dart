@@ -73,36 +73,34 @@ class AuthChoiceScreen extends StatelessWidget {
               const SizedBox(height: 32),
 
               // Divider with "or"
-              Row(
-                children: [
-                  Expanded(child: Divider(color: Colors.grey[300])),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Text(
-                      'or',
-                      style: TextStyle(color: Colors.grey[500]),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: Colors.grey[300])),
-                ],
-              ),
+              // Row(
+              //   children: [
+              //     Expanded(child: Divider(color: Colors.grey[300])),
+              //     Padding(
+              //       padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              //       child: Text(
+              //         'or',
+              //         style: TextStyle(color: Colors.grey[500]),
+              //       ),
+              //     ),
+              //     Expanded(child: Divider(color: Colors.grey[300])),
+              //   ],
+              // ),
 
-              const SizedBox(height: 24),
+              // const SizedBox(height: 24),
 
-              // Continue without account
-              CustomButton(
-                text: 'Continue without account',
-                onPressed: onGuestContinue,
-                variant: ButtonVariant.text,
-              ),
+              // // Continue without account
+              // // CustomButton(
+              // //   text: 'Continue without account',
+              // //   onPressed: onGuestContinue,
+              // //   variant: ButtonVariant.text,
+              // // ),
+              // const SizedBox(height: 8),
 
-              const SizedBox(height: 8),
-
-              Text(
-                '(You can sync later)',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-              ),
-
+              // Text(
+              //   '(You can sync later)',
+              //   style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              // ),
               const Spacer(),
 
               // Legal text

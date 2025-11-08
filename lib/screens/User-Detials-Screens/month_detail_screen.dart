@@ -1,3 +1,4 @@
+import 'package:Grounded/providers/stats_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,29 +25,15 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
   late AnimationController _numberController;
   late Animation<double> _numberAnimation;
 
-  // Data state variables
-  final _userDb = UserDatabaseService();
-  bool _isLoading = true;
-  int _mindfulDays = 0;
-  int _daysInMonth = 31;
-  int _currentDay = 1;
-  String _currentMonth = 'October';
-  int _currentYear = 2025;
-  List<Map<String, dynamic>> _monthDays = [];
-  double _monthProgress = 0.0;
-  int _daysLeft = 0;
-
   @override
   void initState() {
     super.initState();
 
-    // Fade in animation
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
 
-    // Number counting animation
     _numberController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -60,14 +47,19 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
           ),
         );
 
-    // Start animations
     _fadeController.forward();
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) _numberController.forward();
     });
 
-    // Load real data
-    _loadMonthData();
+    // Load data using provider
+    Future.microtask(() {
+      ref.read(monthStatsProvider.notifier).loadMonthData();
+    });
+  }
+
+  Future<void> _refreshData() async {
+    await ref.read(monthStatsProvider.notifier).loadMonthData();
   }
 
   @override
@@ -75,112 +67,6 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
     _fadeController.dispose();
     _numberController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadMonthData() async {
-    try {
-      final userId = _userDb.currentUser?.id;
-      if (userId == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      // Get current date info
-      final now = DateTime.now();
-      final startOfMonth = DateTime(now.year, now.month, 1);
-      final endOfMonth = DateTime(now.year, now.month + 1, 0);
-
-      _currentDay = now.day;
-      _currentMonth = _getMonthName(now.month);
-      _currentYear = now.year;
-      _daysInMonth = endOfMonth.day;
-
-      // Get user's target date from onboarding
-      final onboarding = await _userDb.getOnboardingData(userId);
-      DateTime? targetDate;
-      if (onboarding != null && onboarding['target_date'] != null) {
-        targetDate = DateTime.parse(onboarding['target_date']);
-      }
-
-      // Calculate days left to target date
-      if (targetDate != null) {
-        _daysLeft = targetDate.difference(now).inDays;
-        if (_daysLeft < 0) _daysLeft = 0; // Past target date
-      } else {
-        _daysLeft = _daysInMonth - _currentDay; // Fallback to end of month
-      }
-
-      // Fetch logs for the month
-      final logs = await _userDb.getLogsForRange(
-        userId,
-        startOfMonth,
-        endOfMonth,
-      );
-
-      // Create a map of logs by day
-      Map<int, Map<String, dynamic>> logsByDay = {};
-      for (var log in logs) {
-        final logDate = DateTime.parse(log['timestamp']);
-        logsByDay[logDate.day] = log;
-      }
-
-      // Build month days data
-      List<Map<String, dynamic>> monthDaysList = [];
-      int mindfulCount = 0;
-
-      for (int day = 1; day <= _daysInMonth; day++) {
-        final isPast = day <= _currentDay;
-        bool completed = false;
-
-        if (isPast && logsByDay.containsKey(day)) {
-          final log = logsByDay[day]!;
-          final dayType = log['day_type'] as String?;
-          final substances = log['substances_used'] as List?;
-          completed = dayType == 'mindful' || substances?.isEmpty == true;
-          if (completed) mindfulCount++;
-        }
-        // ✅ Don't count days without logs as mindful - only count actual logged mindful days
-
-        monthDaysList.add({
-          'day': day,
-          'completed': completed,
-          'isPast': isPast,
-        });
-      }
-
-      if (mounted) {
-        setState(() {
-          _mindfulDays = mindfulCount;
-          _monthDays = monthDaysList;
-
-          // Calculate progress based on mindful days vs days passed
-          final daysPassed = _currentDay;
-          _monthProgress = daysPassed > 0
-              ? (mindfulCount / daysPassed * 100)
-              : 0.0;
-
-          // Days left is already calculated from target date above
-
-          _isLoading = false;
-        });
-
-        // Update animation with real count
-        _numberAnimation = Tween<double>(begin: 0, end: _mindfulDays.toDouble())
-            .animate(
-              CurvedAnimation(
-                parent: _numberController,
-                curve: Curves.easeOutCubic,
-              ),
-            );
-        _numberController.reset();
-        _numberController.forward();
-      }
-    } catch (e) {
-      print('Error loading month data: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
   }
 
   String _getMonthName(int month) {
@@ -204,6 +90,7 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
+    final monthState = ref.watch(monthStatsProvider);
     final isDark = themeMode != AppThemeMode.light;
     final isAmoled = themeMode == AppThemeMode.amoled;
 
@@ -255,8 +142,7 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
             icon: Icon(Icons.refresh, color: textPrimary),
             onPressed: () {
               HapticFeedback.lightImpact();
-              setState(() => _isLoading = true);
-              _loadMonthData();
+              _refreshData();
             },
             tooltip: 'Refresh',
           ),
@@ -264,12 +150,9 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async {
-            HapticFeedback.lightImpact();
-            setState(() => _isLoading = true);
-            await _loadMonthData();
-          },
+          onRefresh: _refreshData,
           color: const Color(0xFFA855F7),
+          backgroundColor: backgroundColor,
           child: FadeTransition(
             opacity: _fadeController,
             child: SingleChildScrollView(
@@ -286,9 +169,10 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
                     cardColor,
                     textPrimary,
                     textSecondary,
+                    monthState,
                   ),
                   SizedBox(height: screenWidth > 400 ? 32 : 24),
-                  _isLoading
+                  monthState.isLoading
                       ? _buildStatsShimmer(
                           screenWidth,
                           shimmerBaseColor,
@@ -299,17 +183,18 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
                           cardColor,
                           textPrimary,
                           textSecondary,
+                          monthState,
                         ),
                   SizedBox(height: screenWidth > 400 ? 32 : 24),
                   Text(
-                    '$_currentMonth $_currentYear',
+                    '${monthState.currentMonth} ${monthState.currentYear}',
                     style: AppTextStyles.headlineSmall(context).copyWith(
                       fontSize: screenWidth > 400 ? 18 : 16,
                       color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _isLoading
+                  monthState.isLoading
                       ? _buildCalendarShimmer(
                           screenWidth,
                           shimmerBaseColor,
@@ -320,6 +205,7 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
                           cardColor,
                           textPrimary,
                           textSecondary,
+                          monthState,
                         ),
                   const SizedBox(height: 24),
                 ],
@@ -336,6 +222,7 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
     Color cardColor,
     Color textPrimary,
     Color textSecondary,
+    MonthStats state,
   ) {
     final isSmallScreen = screenWidth < 360;
     final padding = screenWidth > 400 ? 24.0 : (isSmallScreen ? 16.0 : 20.0);
@@ -401,7 +288,7 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            'Out of $_daysInMonth days in $_currentMonth',
+            'Out of ${state.daysInMonth} days in ${state.currentMonth}',
             style: AppTextStyles.bodySmall(
               context,
             ).copyWith(color: textSecondary),
@@ -417,6 +304,7 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
     Color cardColor,
     Color textPrimary,
     Color textSecondary,
+    MonthStats state,
   ) {
     final spacing = screenWidth > 400 ? 12.0 : 8.0;
 
@@ -425,7 +313,7 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
         Expanded(
           child: _buildStatBox(
             emoji: EmojiAssets.chartUp,
-            value: '${_monthProgress.toInt()}%',
+            value: '${state.monthProgress.toInt()}%',
             label: 'Month Progress',
             color: const Color(0xFF3B82F6),
             screenWidth: screenWidth,
@@ -438,7 +326,7 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
         Expanded(
           child: _buildStatBox(
             emoji: EmojiAssets.target,
-            value: '$_daysLeft',
+            value: '${state.daysLeft}',
             label: 'Days Left',
             color: AppColors.accentOrange,
             screenWidth: screenWidth,
@@ -523,6 +411,7 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
     Color cardColor,
     Color textPrimary,
     Color textSecondary,
+    MonthStats state,
   ) {
     final spacing = screenWidth > 400 ? 8.0 : (screenWidth < 360 ? 4.0 : 6.0);
 
@@ -535,9 +424,9 @@ class _MonthDetailScreenState extends ConsumerState<MonthDetailScreen>
         crossAxisSpacing: spacing,
         childAspectRatio: 1,
       ),
-      itemCount: _monthDays.length,
+      itemCount: state.monthDays.length,
       itemBuilder: (context, index) {
-        final day = _monthDays[index];
+        final day = state.monthDays[index];
         return _CalendarDay(
           day: day,
           screenWidth: screenWidth,

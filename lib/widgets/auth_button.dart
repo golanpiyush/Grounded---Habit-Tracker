@@ -34,7 +34,11 @@ class AuthButton extends StatelessWidget {
     switch (type) {
       case AuthButtonType.email:
         return (
-          const Icon(Icons.email_outlined, size: 20),
+          const Icon(
+            Icons.mark_email_unread_rounded,
+            size: 20,
+            color: Colors.white,
+          ),
           'Continue with Email',
           ButtonVariant.primary,
         );

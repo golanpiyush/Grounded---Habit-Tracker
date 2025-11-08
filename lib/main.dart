@@ -1,5 +1,7 @@
-import 'package:Grounded/providers/theme_provider.dart'; // ADDED
+import 'package:Grounded/providers/theme_provider.dart';
+import 'package:Grounded/providers/userDB.dart';
 import 'package:Grounded/screens/auth/goal_setup_screen.dart';
+import 'package:Grounded/Services/auto_log_scheduler.dart'; // ADD THIS
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,6 +43,16 @@ void main() async {
     ),
   ]);
 
+  final isAllowed = await AwesomeNotifications().isNotificationAllowed();
+  if (!isAllowed) {
+    await AwesomeNotifications().requestPermissionToSendNotifications();
+  }
+
+  // Initialize auto-log scheduler
+  print('🤖 Initializing auto-log scheduler...');
+  await AutoLogScheduler.initialize();
+  print('✅ Auto-log scheduler initialized');
+
   // WRAP ProviderScope WITH OVERRIDE AT THE TOP LEVEL
   runApp(
     ProviderScope(
@@ -53,8 +65,71 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  final UserDatabaseService _userDb = UserDatabaseService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Setup auto-log when app starts
+    _setupAutoLog();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Setup auto-log based on user preference
+  Future<void> _setupAutoLog() async {
+    try {
+      final userId = _userDb.currentUser?.id;
+      if (userId == null) {
+        print('⚠️ No user logged in, skipping auto-log setup');
+        return;
+      }
+
+      print('🤖 Setting up auto-log for user: $userId');
+
+      // Get user preferences
+      final onboardingData = await _userDb.getOnboardingData(userId);
+      final autoLogEnabled =
+          onboardingData?['auto_log_enabled'] as bool? ?? false;
+
+      if (autoLogEnabled) {
+        print('✅ Auto-log is enabled, scheduling daily check');
+        await AutoLogScheduler.scheduleDailyCheck();
+
+        // Run immediate check on app startup
+        await AutoLogScheduler.triggerManualCheck();
+      } else {
+        print('⚠️ Auto-log is disabled');
+        await AutoLogScheduler.cancelScheduledChecks();
+      }
+    } catch (e) {
+      print('❌ Error setting up auto-log: $e');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // Check for missing logs when app becomes active
+    if (state == AppLifecycleState.resumed) {
+      print('📱 App resumed, checking auto-log status...');
+      _setupAutoLog();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
